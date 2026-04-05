@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -41,6 +41,7 @@ interface KanbanColumnProps {
   labels: { id: string; name: string; color: string }[];
   onTaskClick: (taskId: string) => void;
   onTaskCreated: (task: Task) => void;
+  canEdit?: boolean;
   bulkMode?: boolean;
   selectedTasks?: Set<string>;
   onSelect?: (taskId: string, selected: boolean) => void;
@@ -53,13 +54,42 @@ export function KanbanColumn({
   labels,
   onTaskClick,
   onTaskCreated,
+  canEdit,
   bulkMode,
   selectedTasks,
   onSelect,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const [columnName, setColumnName] = useState(column.name);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(column.name);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const taskIds = column.tasks.map((t) => t.id);
+
+  function startEditing() {
+    if (!canEdit) return;
+    setEditValue(columnName);
+    setEditing(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  }
+
+  async function commitRename() {
+    const trimmed = editValue.trim();
+    setEditing(false);
+    if (!trimmed || trimmed === columnName) return;
+    setColumnName(trimmed);
+    await fetch(`/api/columns/${column.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: trimmed }),
+    });
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") commitRename();
+    if (e.key === "Escape") { setEditing(false); setEditValue(columnName); }
+  }
 
   return (
     <div
@@ -70,15 +100,39 @@ export function KanbanColumn({
     >
       {/* Column header */}
       <div className="flex items-center justify-between px-3 pt-3 pb-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <div
-            className="w-3 h-3 rounded-full"
+            className="w-3 h-3 rounded-full shrink-0"
             style={{ backgroundColor: column.color }}
           />
-          <h3 className="text-sm font-semibold">{column.name}</h3>
+
+          {editing ? (
+            <input
+              ref={inputRef}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={handleKeyDown}
+              className="text-sm font-semibold bg-background border border-primary rounded px-1.5 py-0.5 outline-none w-full"
+              maxLength={100}
+              autoFocus
+            />
+          ) : (
+            <h3
+              className={cn(
+                "text-sm font-semibold truncate",
+                canEdit && "cursor-pointer hover:text-primary transition-colors"
+              )}
+              onDoubleClick={startEditing}
+              title={canEdit ? "Double-click to rename" : columnName}
+            >
+              {columnName}
+            </h3>
+          )}
+
           {column.wipLimit ? (
             <span className={cn(
-              "text-xs rounded-full px-2 flex items-center gap-1",
+              "text-xs rounded-full px-2 flex items-center gap-1 shrink-0",
               column.tasks.length >= column.wipLimit
                 ? "text-red-500 bg-red-100 dark:bg-red-950"
                 : column.tasks.length >= column.wipLimit * 0.8
@@ -89,12 +143,12 @@ export function KanbanColumn({
               {column.tasks.length}/{column.wipLimit}
             </span>
           ) : (
-            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2">
+            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 shrink-0">
               {column.tasks.length}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 ml-1">
           <NewTaskDialog
             columnId={column.id}
             boardId={boardId}

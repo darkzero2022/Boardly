@@ -326,6 +326,7 @@ export function KanbanBoard({
                   labels={labels}
                   onTaskClick={(taskId) => setSelectedTaskId(taskId)}
                   onTaskCreated={onTaskCreated}
+                  canEdit={session.user.role === "ADMIN" || session.user.role === "MANAGER"}
                   bulkMode={bulkMode}
                   selectedTasks={selectedTasks}
                   onSelect={handleSelect}
