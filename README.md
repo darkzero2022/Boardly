@@ -99,14 +99,44 @@ Configure response/resolution time targets per priority level, per board. Escala
 
 ## Installation
 
-### 1. Clone / download the project
+### Quick Start (recommended)
 
 ```bash
-git clone <your-repo-url> KanBoard
+git clone https://github.com/darkzero2022/KanBoard.git
 cd KanBoard
 ```
 
-### 2. Install dependencies
+**Windows:**
+```bat
+setup.bat
+start.bat
+```
+
+**macOS / Linux:**
+```bash
+chmod +x setup.sh start.sh
+./setup.sh
+./start.sh
+```
+
+The setup scripts handle everything automatically:
+- Install npm dependencies
+- Generate `.env.local` with a random secret
+- Run database migrations
+- Seed default users and sample data
+
+---
+
+### Manual Installation
+
+#### 1. Clone the project
+
+```bash
+git clone https://github.com/darkzero2022/KanBoard.git
+cd KanBoard
+```
+
+#### 2. Install dependencies
 
 ```bash
 npm install --legacy-peer-deps
@@ -114,50 +144,42 @@ npm install --legacy-peer-deps
 
 > `--legacy-peer-deps` is required because `next-auth@5.0.0-beta.25` has peer dependency conflicts with some packages.
 
-### 3. Configure environment variables
-
-Copy the example and fill in your values:
+#### 3. Configure environment variables
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-Edit `.env.local` — see the [Environment Variables](#environment-variables) section below.
+Edit `.env.local` and set a strong random secret at minimum:
 
-At minimum, set a strong random secret:
-
-```env
-AUTH_SECRET="generate-with-openssl-rand-base64-32"
-```
-
-Generate one:
 ```bash
+# Generate a secret:
 openssl rand -base64 32
 ```
 
-### 4. Set up the database
+```env
+AUTH_SECRET="your-generated-secret"
+```
 
-Run the Prisma migration to create the SQLite schema:
+#### 4. Set up the database
 
 ```bash
 DATABASE_URL="file:./kanboard.db" npx prisma migrate dev --name init
 ```
 
-### 5. Seed default data
-
-Creates the default team, 3 sample users, 1 workspace, 1 board, 8 global labels, and an SLA policy:
+#### 5. Seed default data
 
 ```bash
 DATABASE_URL="file:./kanboard.db" npx tsx prisma/seed.ts
 ```
 
-### 6. Start the development server
+#### 6. Start the server
 
 ```bash
 DATABASE_URL="file:./kanboard.db" npm run dev
 ```
 
-The app starts on **http://localhost:3000** and is also accessible from any device on your LAN at **http://[your-machine-ip]:3000**.
+The app starts on **http://localhost:3000** and is accessible on your LAN at **http://[your-machine-ip]:3000**.
 
 ---
 
