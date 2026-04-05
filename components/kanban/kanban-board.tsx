@@ -17,6 +17,11 @@ import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { TaskDetailDrawer } from "./task-detail-drawer";
 import { NewColumnButton } from "./new-column-button";
+import { BoardHeader } from "./board-header";
+import { BulkActionBar } from "./bulk-action-bar";
+import { CalendarView } from "./calendar-view";
+import { SwimlaneView } from "./swimlane-view";
+import { KeyboardShortcutsOverlay } from "./keyboard-shortcuts-overlay";
 import { useSocketContext } from "@/components/socket-provider";
 import { SOCKET_EVENTS } from "@/lib/socket";
 import { Plus } from "lucide-react";
@@ -58,6 +63,7 @@ interface Column {
   name: string;
   color: string;
   order: number;
+  wipLimit?: number | null;
   tasks: Task[];
 }
 
@@ -73,6 +79,7 @@ interface KanbanBoardProps {
   labels: Label[];
   openTaskId?: string;
   currentUserId: string;
+  session: { user: { role?: string } };
 }
 
 export function KanbanBoard({
@@ -81,12 +88,18 @@ export function KanbanBoard({
   labels,
   openTaskId,
   currentUserId,
+  session,
 }: KanbanBoardProps) {
   const [columns, setColumns] = useState<Column[]>(board.columns);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(
     openTaskId ?? null
   );
+  const [view, setView] = useState<"kanban" | "calendar">("kanban");
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [swimlaneMode, setSwimlaneMode] = useState<"off" | "assignee" | "priority" | "label">("off");
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const { socket, joinBoard, leaveBoard } = useSocketContext();
 
@@ -99,6 +112,20 @@ export function KanbanBoard({
     joinBoard(board.id);
     return () => leaveBoard(board.id);
   }, [board.id, joinBoard, leaveBoard]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "?") setShowShortcuts(true);
+      if (e.key === "b" || e.key === "B") setBulkMode((prev) => !prev);
+      if (e.key === "1") setView("kanban");
+      if (e.key === "2") setView("calendar");
+      if (e.key === "Escape") { setShowShortcuts(false); setBulkMode(false); }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
 
   // Listen for real-time task events
   useEffect(() => {
@@ -229,76 +256,150 @@ export function KanbanBoard({
     setColumns((prev) => [...prev, { ...col, tasks: [] }]);
   }
 
-  const selectedTask = columns.flatMap((c) => c.tasks).find((t) => t.id === selectedTaskId) ?? null;
+  function handleSelect(taskId: string, sel: boolean) {
+    setSelectedTasks(prev => {
+      const next = new Set(prev);
+      sel ? next.add(taskId) : next.delete(taskId);
+      return next;
+    });
+  }
+
+  async function handleBulkAction(type: string, payload: unknown) {
+    if (selectedTasks.size === 0) return;
+    await fetch("/api/tasks/bulk", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskIds: Array.from(selectedTasks), action: { type, payload } }),
+    });
+    setSelectedTasks(new Set());
+    setBulkMode(false);
+    window.location.reload();
+  }
+
+  const allTasks = columns.flatMap((c) => c.tasks);
+  const selectedTask = allTasks.find((t) => t.id === selectedTaskId) ?? null;
 
   return (
-    <div className="flex-1 flex overflow-hidden">
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex gap-4 p-6 overflow-x-auto flex-1">
-          {columns.map((column) => (
-            <KanbanColumn
-              key={column.id}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              column={column as any}
+    <div className="flex flex-col h-full">
+      <BoardHeader
+        board={board as any}
+        session={session as any}
+        view={view}
+        onViewChange={setView}
+        bulkMode={bulkMode}
+        onBulkToggle={() => { setBulkMode(b => !b); setSelectedTasks(new Set()); }}
+        swimlaneMode={swimlaneMode}
+        onSwimlaneModeChange={setSwimlaneMode}
+        onShowShortcuts={() => setShowShortcuts(true)}
+      />
+
+      <div className="flex-1 flex overflow-hidden">
+        {view === "kanban" && swimlaneMode !== "off" && (
+          <div className="flex-1 overflow-auto p-6">
+            <SwimlaneView
+              columns={columns as any}
               boardId={board.id}
               users={users}
               labels={labels}
+              groupBy={swimlaneMode}
               onTaskClick={(taskId) => setSelectedTaskId(taskId)}
-              onTaskCreated={onTaskCreated}
             />
-          ))}
-          <NewColumnButton boardId={board.id} onCreated={onColumnCreated} />
-        </div>
+          </div>
+        )}
 
-        <DragOverlay>
-          {activeTask && (
-            <div className="rotate-2 scale-105 opacity-90">
-              <TaskCard
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                task={activeTask as any}
-                onClick={() => {}}
-                isDragging
-              />
+        {view === "kanban" && swimlaneMode === "off" && (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex gap-4 p-6 overflow-x-auto flex-1">
+              {columns.map((column) => (
+                <KanbanColumn
+                  key={column.id}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  column={column as any}
+                  boardId={board.id}
+                  users={users}
+                  labels={labels}
+                  onTaskClick={(taskId) => setSelectedTaskId(taskId)}
+                  onTaskCreated={onTaskCreated}
+                  bulkMode={bulkMode}
+                  selectedTasks={selectedTasks}
+                  onSelect={handleSelect}
+                />
+              ))}
+              <NewColumnButton boardId={board.id} onCreated={onColumnCreated} />
             </div>
-          )}
-        </DragOverlay>
-      </DndContext>
 
-      {selectedTask && (
-        <TaskDetailDrawer
-          taskId={selectedTaskId!}
-          boardId={board.id}
-          users={users}
-          labels={labels}
-          currentUserId={currentUserId}
-          onClose={() => setSelectedTaskId(null)}
-          onUpdated={(updated) => {
-            setColumns((prev) =>
-              prev.map((col) => ({
-                ...col,
-                tasks: col.tasks.map((t) =>
-                  t.id === updated.id ? { ...t, ...updated } : t
-                ),
-              }))
-            );
-          }}
-          onDeleted={(taskId) => {
-            setColumns((prev) =>
-              prev.map((col) => ({
-                ...col,
-                tasks: col.tasks.filter((t) => t.id !== taskId),
-              }))
-            );
-            setSelectedTaskId(null);
-          }}
-        />
-      )}
+            <DragOverlay>
+              {activeTask && (
+                <div className="rotate-2 scale-105 opacity-90">
+                  <TaskCard
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    task={activeTask as any}
+                    onClick={() => {}}
+                    isDragging
+                  />
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
+        )}
+
+        {view === "calendar" && (
+          <div className="flex-1 p-6 overflow-auto">
+            <CalendarView
+              tasks={allTasks as any}
+              onTaskClick={(id) => setSelectedTaskId(id)}
+            />
+          </div>
+        )}
+
+        {selectedTask && (
+          <TaskDetailDrawer
+            taskId={selectedTaskId!}
+            boardId={board.id}
+            users={users}
+            labels={labels}
+            currentUserId={currentUserId}
+            onClose={() => setSelectedTaskId(null)}
+            onUpdated={(updated) => {
+              setColumns((prev) =>
+                prev.map((col) => ({
+                  ...col,
+                  tasks: col.tasks.map((t) =>
+                    t.id === updated.id ? { ...t, ...updated } : t
+                  ),
+                }))
+              );
+            }}
+            onDeleted={(taskId) => {
+              setColumns((prev) =>
+                prev.map((col) => ({
+                  ...col,
+                  tasks: col.tasks.filter((t) => t.id !== taskId),
+                }))
+              );
+              setSelectedTaskId(null);
+            }}
+          />
+        )}
+      </div>
+
+      <BulkActionBar
+        selectedCount={selectedTasks.size}
+        columns={columns.map((c) => ({ id: c.id, name: c.name }))}
+        onMove={(columnId) => handleBulkAction("move", { columnId })}
+        onAssign={() => handleBulkAction("assign", {})}
+        onLabelAdd={() => handleBulkAction("label", {})}
+        onDelete={() => handleBulkAction("delete", {})}
+        onClear={() => { setSelectedTasks(new Set()); }}
+      />
+
+      <KeyboardShortcutsOverlay open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>
   );
 }

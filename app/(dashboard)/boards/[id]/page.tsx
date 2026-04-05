@@ -2,7 +2,6 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import { KanbanBoard } from "@/components/kanban/kanban-board";
-import { BoardHeader } from "@/components/kanban/board-header";
 
 export default async function BoardPage({
   params,
@@ -47,13 +46,13 @@ export default async function BoardPage({
 
   return (
     <div className="flex flex-col h-full -m-6">
-      <BoardHeader board={board} session={session} />
       <KanbanBoard
         board={board}
         users={users}
         labels={labels}
         openTaskId={searchParams.task}
         currentUserId={session.user.id!}
+        session={session}
       />
     </div>
   );
