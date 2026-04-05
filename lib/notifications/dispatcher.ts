@@ -11,6 +11,21 @@ interface DispatchPayload {
   taskId?: string;
 }
 
+/** Dispatch to all watchers of a task (except the actor who triggered the event). */
+export async function dispatchToWatchers(
+  taskId: string,
+  actorId: string,
+  payload: Omit<DispatchPayload, "userId">
+) {
+  const watchers = await prisma.taskWatcher.findMany({
+    where: { taskId, userId: { not: actorId } },
+    select: { userId: true },
+  });
+  await Promise.allSettled(
+    watchers.map((w) => dispatch({ ...payload, userId: w.userId, taskId }))
+  );
+}
+
 export async function dispatch(payload: DispatchPayload) {
   const [userConfig, globalConfig] = await Promise.all([
     prisma.notifConfig.findUnique({ where: { userId: payload.userId } }),

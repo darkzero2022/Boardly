@@ -62,6 +62,9 @@ app.prepare().then(() => {
       startSLACron();
       console.log("> SLA engine started (runs every 15 minutes)");
     });
+    import("./lib/recurring/scheduler").then(({ startRecurringCron }) => {
+      startRecurringCron();
+    });
   });
 });
 
