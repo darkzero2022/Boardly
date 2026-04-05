@@ -8,13 +8,14 @@ import {
 } from "@dnd-kit/sortable";
 import { TaskCard } from "./task-card";
 import { NewTaskDialog } from "./new-task-dialog";
-import { MoreHorizontal, Plus } from "lucide-react";
+import { AlertTriangle, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Column {
   id: string;
   name: string;
   color: string;
+  wipLimit?: number | null;
   tasks: Task[];
 }
 
@@ -40,6 +41,9 @@ interface KanbanColumnProps {
   labels: { id: string; name: string; color: string }[];
   onTaskClick: (taskId: string) => void;
   onTaskCreated: (task: Task) => void;
+  bulkMode?: boolean;
+  selectedTasks?: Set<string>;
+  onSelect?: (taskId: string, selected: boolean) => void;
 }
 
 export function KanbanColumn({
@@ -49,6 +53,9 @@ export function KanbanColumn({
   labels,
   onTaskClick,
   onTaskCreated,
+  bulkMode,
+  selectedTasks,
+  onSelect,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
@@ -69,9 +76,23 @@ export function KanbanColumn({
             style={{ backgroundColor: column.color }}
           />
           <h3 className="text-sm font-semibold">{column.name}</h3>
-          <span className="text-xs text-muted-foreground bg-muted rounded-full px-2">
-            {column.tasks.length}
-          </span>
+          {column.wipLimit ? (
+            <span className={cn(
+              "text-xs rounded-full px-2 flex items-center gap-1",
+              column.tasks.length >= column.wipLimit
+                ? "text-red-500 bg-red-100 dark:bg-red-950"
+                : column.tasks.length >= column.wipLimit * 0.8
+                ? "text-orange-500 bg-orange-100 dark:bg-orange-950"
+                : "text-muted-foreground bg-muted"
+            )}>
+              {column.tasks.length >= column.wipLimit && <AlertTriangle className="w-3 h-3" />}
+              {column.tasks.length}/{column.wipLimit}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2">
+              {column.tasks.length}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <NewTaskDialog
@@ -96,7 +117,13 @@ export function KanbanColumn({
           className="flex-1 px-2 pb-2 space-y-2 min-h-[120px] overflow-y-auto max-h-[calc(100vh-220px)]"
         >
           {column.tasks.map((task) => (
-            <TaskCard key={task.id} task={task} onClick={onTaskClick} />
+            <TaskCard
+              key={task.id}
+              task={task}
+              onClick={onTaskClick}
+              selected={selectedTasks?.has(task.id)}
+              onSelect={bulkMode ? onSelect : undefined}
+            />
           ))}
         </div>
       </SortableContext>

@@ -3,7 +3,8 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn, priorityColor, slaStatusColor, formatDate } from "@/lib/utils";
-import { MessageSquare, Paperclip, GitBranch, Clock, AlertTriangle } from "lucide-react";
+import { MessageSquare, Paperclip, GitBranch, Clock, AlertTriangle, Lock } from "lucide-react";
+import { useState } from "react";
 
 interface Task {
   id: string;
@@ -24,9 +25,25 @@ interface TaskCardProps {
   task: Task;
   onClick: (taskId: string) => void;
   isDragging?: boolean;
+  selected?: boolean;
+  onSelect?: (taskId: string, selected: boolean) => void;
+  isBlocked?: boolean;
+  onClone?: (taskId: string) => void;
 }
 
-export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
+export function TaskCard({ task, onClick, isDragging, selected, onSelect, isBlocked, onClone }: TaskCardProps) {
+  const [cloning, setCloning] = useState(false);
+
+  async function handleClone(e: React.MouseEvent) {
+    e.stopPropagation();
+    setCloning(true);
+    const res = await fetch(`/api/tasks/${task.id}/clone`, { method: "POST" });
+    if (res.ok && onClone) {
+      const newTask = await res.json();
+      onClone(newTask.id);
+    }
+    setCloning(false);
+  }
   const {
     attributes,
     listeners,
@@ -52,12 +69,21 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
       {...listeners}
       onClick={() => onClick(task.id)}
       className={cn(
-        "bg-card border border-border rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-primary/40 transition-all group select-none",
+        "relative bg-card border border-border rounded-lg p-3 cursor-pointer hover:shadow-md hover:border-primary/40 transition-all group select-none",
         (isSortableDragging || isDragging) && "opacity-40 shadow-lg",
         isBreached && "border-l-4 border-l-red-500",
-        isAtRisk && !isBreached && "border-l-4 border-l-yellow-500"
+        isAtRisk && !isBreached && "border-l-4 border-l-yellow-500",
+        selected && "ring-2 ring-primary"
       )}
     >
+      {onSelect && (
+        <div className="absolute top-2 right-2 z-10" onClick={(e) => { e.stopPropagation(); onSelect(task.id, !selected); }}>
+          <div className={cn("w-4 h-4 rounded border-2 flex items-center justify-center transition-colors", selected ? "bg-primary border-primary" : "border-muted-foreground/50 bg-background")}>
+            {selected && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+          </div>
+        </div>
+      )}
+
       {/* Labels */}
       {task.labels.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">
@@ -77,6 +103,13 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
       <p className="text-sm font-medium leading-snug group-hover:text-primary transition-colors">
         {task.title}
       </p>
+
+      {isBlocked && (
+        <div className="flex items-center gap-1 mt-1 text-xs text-red-500 font-medium">
+          <Lock className="w-3 h-3" />
+          Blocked
+        </div>
+      )}
 
       {/* SLA Warning */}
       {(isBreached || isAtRisk) && (
@@ -125,6 +158,17 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
             </span>
           )}
         </div>
+
+        {onClone && (
+          <button
+            onClick={handleClone}
+            disabled={cloning}
+            className="opacity-0 group-hover:opacity-100 text-xs text-muted-foreground hover:text-foreground px-1 py-0.5 rounded hover:bg-accent transition-all"
+            title="Duplicate task"
+          >
+            {cloning ? "..." : "⋯"}
+          </button>
+        )}
 
         {/* Assignee avatar */}
         {task.assignee && (

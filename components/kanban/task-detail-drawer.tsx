@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Trash2, Clock, AlertTriangle, Paperclip, MessageSquare, GitBranch, History } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Trash2, Clock, AlertTriangle, Paperclip, MessageSquare, GitBranch, History, Eye, EyeOff, Link2, UploadCloud, Download, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,10 @@ import { AuditTimeline } from "./audit-timeline";
 
 interface User { id: string; name: string | null; image: string | null }
 interface Label { id: string; name: string; color: string }
+
+interface DepTask { id: string; title: string; dependsOnId?: string; taskId?: string; dependsOn?: { title: string }; task?: { title: string } }
+interface Attachment { id: string; filename: string; originalName: string; mimeType: string; size: number; path: string; createdAt: string; uploadedBy: { name: string | null } }
+interface TimeLogEntry { id: string; minutes: number; note: string | null; startedAt: string; user: { id: string; name: string | null; image: string | null } }
 
 interface TaskDetail {
   id: string;
@@ -45,7 +49,7 @@ interface TaskDetailDrawerProps {
   onDeleted: (taskId: string) => void;
 }
 
-type ActiveTab = "details" | "comments" | "history" | "subtasks";
+type ActiveTab = "details" | "comments" | "history" | "subtasks" | "attachments" | "time";
 
 export function TaskDetailDrawer({
   taskId,
@@ -68,6 +72,16 @@ export function TaskDetailDrawer({
     assigneeId: "",
     dueDate: "",
   });
+  const [watching, setWatching] = useState(false);
+  const [watchCount, setWatchCount] = useState(0);
+  const [dependencies, setDependencies] = useState<{ blocks: DepTask[]; blockedBy: DepTask[] }>({ blocks: [], blockedBy: [] });
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [timeLogs, setTimeLogs] = useState<TimeLogEntry[]>([]);
+  const [logMinutes, setLogMinutes] = useState("");
+  const [logNote, setLogNote] = useState("");
+  const [loggingTime, setLoggingTime] = useState(false);
 
   useEffect(() => {
     fetch(`/api/tasks/${taskId}`)
@@ -82,6 +96,22 @@ export function TaskDetailDrawer({
           dueDate: data.dueDate ? data.dueDate.slice(0, 16) : "",
         });
       });
+    fetch(`/api/tasks/${taskId}/watch`)
+      .then((r) => r.json())
+      .then((d) => { setWatching(d.watching); setWatchCount(d.count); })
+      .catch(() => {});
+    fetch(`/api/tasks/${taskId}/dependencies`)
+      .then((r) => r.json())
+      .then((d) => setDependencies(d))
+      .catch(() => {});
+    fetch(`/api/tasks/${taskId}/attachments`)
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setAttachments(d))
+      .catch(() => {});
+    fetch(`/api/tasks/${taskId}/timelogs`)
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setTimeLogs(d))
+      .catch(() => {});
   }, [taskId]);
 
   async function handleSave() {
@@ -113,6 +143,36 @@ export function TaskDetailDrawer({
     onDeleted(taskId);
   }
 
+  async function toggleWatch() {
+    const method = watching ? "DELETE" : "POST";
+    const res = await fetch(`/api/tasks/${taskId}/watch`, { method });
+    if (res.ok) {
+      const d = await res.json();
+      setWatching(d.watching);
+      setWatchCount(d.count);
+    }
+  }
+
+  async function uploadFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/tasks/${taskId}/attachments`, { method: "POST", body: fd });
+    if (res.ok) {
+      const att = await res.json();
+      setAttachments((prev) => [...prev, att]);
+    }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function deleteAttachment(attachId: string) {
+    await fetch(`/api/tasks/${taskId}/attachments/${attachId}`, { method: "DELETE" });
+    setAttachments((prev) => prev.filter((a) => a.id !== attachId));
+  }
+
   async function toggleLabel(labelId: string) {
     const has = task?.labels.some((l) => l.labelId === labelId);
     const res = await fetch(`/api/tasks/${taskId}/labels`, {
@@ -134,10 +194,40 @@ export function TaskDetailDrawer({
     }
   }
 
+  async function logTime() {
+    const mins = parseInt(logMinutes);
+    if (!mins || mins <= 0) return;
+    setLoggingTime(true);
+    const res = await fetch(`/api/tasks/${taskId}/timelogs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ minutes: mins, note: logNote || undefined }),
+    });
+    if (res.ok) {
+      const entry = await res.json();
+      setTimeLogs((prev) => [...prev, entry]);
+      setLogMinutes("");
+      setLogNote("");
+    }
+    setLoggingTime(false);
+  }
+
+  async function deleteTimeLog(logId: string) {
+    await fetch(`/api/tasks/${taskId}/timelogs/${logId}`, { method: "DELETE" });
+    setTimeLogs((prev) => prev.filter((l) => l.id !== logId));
+  }
+
+  const totalMinutes = timeLogs.reduce((sum, l) => sum + l.minutes, 0);
+  const totalTime = totalMinutes >= 60
+    ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
+    : `${totalMinutes}m`;
+
   const tabs: { key: ActiveTab; label: string }[] = [
     { key: "details", label: "Details" },
     { key: "comments", label: "Comments" },
     { key: "subtasks", label: "Subtasks" },
+    { key: "attachments", label: `Attachments${attachments.length > 0 ? ` (${attachments.length})` : ""}` },
+    { key: "time", label: `Time${timeLogs.length > 0 ? ` (${totalTime})` : ""}` },
     { key: "history", label: "History" },
   ];
 
@@ -177,6 +267,16 @@ export function TaskDetailDrawer({
                 </Button>
               </>
             )}
+            <Button
+              size="sm"
+              variant={watching ? "default" : "outline"}
+              onClick={toggleWatch}
+              title={watching ? "Stop watching" : "Watch task"}
+              className="gap-1.5"
+            >
+              {watching ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              <span className="text-xs">{watchCount > 0 ? watchCount : ""}</span>
+            </Button>
             <Button
               size="icon"
               variant="ghost"
@@ -407,6 +507,37 @@ export function TaskDetailDrawer({
                       {task.isRecurring ? task.recurrenceRule : "Not recurring"}
                     </p>
                   </div>
+
+                  {/* Dependencies */}
+                  {(dependencies.blocks.length > 0 || dependencies.blockedBy.length > 0) && (
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-2 block">
+                        Dependencies
+                      </label>
+                      {dependencies.blockedBy.length > 0 && (
+                        <div className="mb-2">
+                          <p className="text-xs text-muted-foreground mb-1">Blocked by</p>
+                          {dependencies.blockedBy.map((dep: DepTask) => (
+                            <div key={dep.id} className="flex items-center gap-2 text-sm p-1.5 rounded bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 mb-1">
+                              <Lock className="w-3 h-3 text-red-500" />
+                              <span>{dep.dependsOn?.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {dependencies.blocks.length > 0 && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Blocks</p>
+                          {dependencies.blocks.map((dep: DepTask) => (
+                            <div key={dep.id} className="flex items-center gap-2 text-sm p-1.5 rounded bg-muted mb-1">
+                              <Link2 className="w-3 h-3 text-muted-foreground" />
+                              <span>{dep.task?.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -423,6 +554,113 @@ export function TaskDetailDrawer({
                     taskId={taskId}
                     boardId={boardId}
                   />
+                </div>
+              )}
+
+              {activeTab === "attachments" && (
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold">Attachments ({attachments.length})</h3>
+                    <div>
+                      <input ref={fileInputRef} type="file" className="hidden" onChange={uploadFile} />
+                      <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                        <UploadCloud className="w-3.5 h-3.5 mr-1.5" />
+                        {uploading ? "Uploading..." : "Upload"}
+                      </Button>
+                    </div>
+                  </div>
+                  {attachments.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Paperclip className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">No attachments yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {attachments.map((att) => (
+                        <div key={att.id} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">
+                          <Paperclip className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{att.originalName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(att.size / 1024).toFixed(1)} KB · {att.uploadedBy?.name} · {timeAgo(att.createdAt)}
+                            </p>
+                          </div>
+                          <a href={`/${att.path}`} download={att.originalName} className="p-1.5 hover:bg-accent rounded">
+                            <Download className="w-3.5 h-3.5 text-muted-foreground" />
+                          </a>
+                          <button onClick={() => deleteAttachment(att.id)} className="p-1.5 hover:bg-destructive/10 rounded text-destructive">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === "time" && (
+                <div className="p-6 space-y-4">
+                  {totalMinutes > 0 && (
+                    <div className="text-sm font-medium text-foreground bg-muted rounded-lg px-4 py-2 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      Total logged: <span className="font-bold">{totalTime}</span>
+                    </div>
+                  )}
+
+                  {/* Log time form */}
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Minutes"
+                      value={logMinutes}
+                      onChange={(e) => setLogMinutes(e.target.value)}
+                      className="w-28"
+                      min={1}
+                    />
+                    <Input
+                      placeholder="Note (optional)"
+                      value={logNote}
+                      onChange={(e) => setLogNote(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button size="sm" onClick={logTime} disabled={loggingTime || !logMinutes}>
+                      {loggingTime ? "..." : "Log"}
+                    </Button>
+                  </div>
+
+                  {/* Time log list */}
+                  <div className="space-y-2">
+                    {timeLogs.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No time logged yet.</p>
+                    )}
+                    {timeLogs.map((log) => (
+                      <div key={log.id} className="flex items-start justify-between gap-3 p-3 rounded-lg border border-border">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                            {(log.user.name ?? "?")[0].toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">{log.user.name ?? "Unknown"}</span>
+                              <span className="text-xs font-semibold text-primary">{log.minutes}m</span>
+                            </div>
+                            {log.note && <p className="text-xs text-muted-foreground truncate">{log.note}</p>}
+                            <p className="text-xs text-muted-foreground">{timeAgo(log.startedAt)}</p>
+                          </div>
+                        </div>
+                        {log.user.id === currentUserId && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                            onClick={() => deleteTimeLog(log.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

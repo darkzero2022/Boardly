@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TaskTemplatePicker } from "@/components/task-templates/task-template-picker";
 import {
   Dialog,
   DialogContent,
@@ -96,6 +97,14 @@ export function NewTaskDialog({
           <DialogTitle>New Task</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <TaskTemplatePicker
+            onSelect={(tpl) => {
+              if (!title) setTitle(tpl.name);
+              setDescription(tpl.description || "");
+              setPriority(tpl.priority);
+              setSelectedLabels(tpl.labelIds);
+            }}
+          />
           <div>
             <Input
               placeholder="Task title *"
