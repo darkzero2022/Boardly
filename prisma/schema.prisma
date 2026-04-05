@@ -1,0 +1,366 @@
+// KanBoard Prisma schema — SQLite (enums stored as String)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth / Users ─────────────────────────────────────────────────────────────
+// role: "ADMIN" | "MANAGER" | "MEMBER"
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  microsoftId   String?   @unique
+  role          String    @default("MEMBER")
+  teamId        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  team              Team?              @relation(fields: [teamId], references: [id])
+  accounts          Account[]
+  sessions          Session[]
+  assignedTasks     Task[]             @relation("TaskAssignee")
+  reportedTasks     Task[]             @relation("TaskReporter")
+  comments          Comment[]
+  attachments       Attachment[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  notifConfig       NotifConfig?
+  boardMembers      BoardMember[]
+
+  @@index([teamId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Teams & Workspaces ───────────────────────────────────────────────────────
+// visibility: "PRIVATE" | "TEAM" | "PUBLIC"
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  users        User[]
+  workspaces   Workspace[]
+  boardMembers BoardMember[]
+}
+
+model Workspace {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  teamId      String
+  visibility  String   @default("TEAM")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team   Team    @relation(fields: [teamId], references: [id])
+  boards Board[]
+
+  @@index([teamId])
+}
+
+// ─── Boards & Columns ─────────────────────────────────────────────────────────
+
+model Board {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  workspaceId    String
+  teamsWebhook   String?
+  teamsChannelId String?
+  plannerPlanId  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  workspace  Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  columns    Column[]
+  tasks      Task[]
+  slaPolicy  SLAPolicy?
+  members    BoardMember[]
+
+  @@index([workspaceId])
+}
+
+model BoardMember {
+  id      String  @id @default(cuid())
+  boardId String
+  userId  String?
+  teamId  String?
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user  User?  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team  Team?  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, userId])
+  @@index([boardId])
+}
+
+model Column {
+  id      String @id @default(cuid())
+  boardId String
+  name    String
+  color   String @default("#6366f1")
+  order   Int    @default(0)
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@index([boardId])
+}
+
+// ─── Tasks ────────────────────────────────────────────────────────────────────
+// priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
+// slaStatus: "OK" | "AT_RISK" | "BREACHED"
+
+model Task {
+  id             String    @id @default(cuid())
+  title          String
+  description    String?
+  boardId        String
+  columnId       String
+  assigneeId     String?
+  reporterId     String?
+  priority       String    @default("MEDIUM")
+  dueDate        DateTime?
+  slaDeadline    DateTime?
+  slaStatus      String    @default("OK")
+  order          Int       @default(0)
+  parentTaskId   String?
+  isRecurring    Boolean   @default(false)
+  recurrenceRule String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  board       Board        @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  column      Column       @relation(fields: [columnId], references: [id])
+  assignee    User?        @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  reporter    User?        @relation("TaskReporter", fields: [reporterId], references: [id])
+  parentTask  Task?        @relation("Subtasks", fields: [parentTaskId], references: [id])
+  subtasks    Task[]       @relation("Subtasks")
+  labels      TaskLabel[]
+  comments    Comment[]
+  attachments Attachment[]
+  auditLogs   AuditLog[]
+  plannerSync PlannerSync?
+
+  @@index([boardId])
+  @@index([columnId])
+  @@index([assigneeId])
+  @@index([parentTaskId])
+  @@index([slaStatus])
+}
+
+// ─── Labels ───────────────────────────────────────────────────────────────────
+
+model Label {
+  id    String @id @default(cuid())
+  name  String @unique
+  color String @default("#6366f1")
+
+  tasks TaskLabel[]
+}
+
+model TaskLabel {
+  taskId  String
+  labelId String
+
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, labelId])
+}
+
+// ─── Comments & Attachments ───────────────────────────────────────────────────
+
+model Comment {
+  id        String   @id @default(cuid())
+  taskId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id])
+
+  @@index([taskId])
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  taskId       String
+  uploadedById String
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  path         String
+  createdAt    DateTime @default(now())
+
+  task       Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation(fields: [uploadedById], references: [id])
+
+  @@index([taskId])
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  action    String
+  field     String?
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+// ─── SLA ──────────────────────────────────────────────────────────────────────
+
+model SLAPolicy {
+  id      String @id @default(cuid())
+  boardId String @unique
+
+  criticalHours Int @default(4)
+  highHours     Int @default(24)
+  mediumHours   Int @default(72)
+  lowHours      Int @default(168)
+
+  escalations SLAEscalation[]
+  board       Board           @relation(fields: [boardId], references: [id], onDelete: Cascade)
+}
+
+model SLAEscalation {
+  id          String @id @default(cuid())
+  slaPolicyId String
+  triggerPct  Int
+  notifyRoles String // JSON array: ["MEMBER","MANAGER","ADMIN"]
+
+  slaPolicy SLAPolicy @relation(fields: [slaPolicyId], references: [id], onDelete: Cascade)
+
+  @@index([slaPolicyId])
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
+
+model NotifConfig {
+  id     String  @id @default(cuid())
+  userId String  @unique
+  inApp  Boolean @default(true)
+  email  Boolean @default(false)
+  teams  Boolean @default(false)
+  browser Boolean @default(false)
+
+  onAssigned   Boolean @default(true)
+  onMention    Boolean @default(true)
+  onSlaWarning Boolean @default(true)
+  onSlaBreach  Boolean @default(true)
+  onCompleted  Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Global Config (Admin) ────────────────────────────────────────────────────
+
+model GlobalNotifConfig {
+  id             String  @id @default("global")
+  allowInApp     Boolean @default(true)
+  allowEmail     Boolean @default(true)
+  allowTeams     Boolean @default(false)
+  allowBrowser   Boolean @default(false)
+
+  smtpHost String?
+  smtpPort Int?
+  smtpUser String?
+  smtpPass String?
+
+  vapidPublicKey  String?
+  vapidPrivateKey String?
+
+  allowMicrosoftSSO Boolean @default(true)
+  allowCredentials  Boolean @default(true)
+}
+
+// ─── MS Planner Sync ──────────────────────────────────────────────────────────
+// syncDirection: "BOTH" | "TO_PLANNER" | "FROM_PLANNER"
+
+model PlannerSync {
+  id            String   @id @default(cuid())
+  taskId        String   @unique
+  plannerId     String
+  lastSyncAt    DateTime @default(now())
+  syncDirection String   @default("BOTH")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([plannerId])
+}
