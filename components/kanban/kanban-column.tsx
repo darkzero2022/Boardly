@@ -8,13 +8,14 @@ import {
 } from "@dnd-kit/sortable";
 import { TaskCard } from "./task-card";
 import { NewTaskDialog } from "./new-task-dialog";
-import { MoreHorizontal, Plus } from "lucide-react";
+import { AlertTriangle, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Column {
   id: string;
   name: string;
   color: string;
+  wipLimit?: number | null;
   tasks: Task[];
 }
 
@@ -75,9 +76,23 @@ export function KanbanColumn({
             style={{ backgroundColor: column.color }}
           />
           <h3 className="text-sm font-semibold">{column.name}</h3>
-          <span className="text-xs text-muted-foreground bg-muted rounded-full px-2">
-            {column.tasks.length}
-          </span>
+          {column.wipLimit ? (
+            <span className={cn(
+              "text-xs rounded-full px-2 flex items-center gap-1",
+              column.tasks.length >= column.wipLimit
+                ? "text-red-500 bg-red-100 dark:bg-red-950"
+                : column.tasks.length >= column.wipLimit * 0.8
+                ? "text-orange-500 bg-orange-100 dark:bg-orange-950"
+                : "text-muted-foreground bg-muted"
+            )}>
+              {column.tasks.length >= column.wipLimit && <AlertTriangle className="w-3 h-3" />}
+              {column.tasks.length}/{column.wipLimit}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2">
+              {column.tasks.length}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1">
           <NewTaskDialog
