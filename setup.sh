@@ -2,115 +2,222 @@
 set -e
 
 echo ""
-echo " ====================================================="
-echo "  KanBoard Setup"
-echo " ====================================================="
+echo " ╔══════════════════════════════════════════════════╗"
+echo " ║          KanBoard Setup — v3.0                   ║"
+echo " ║   Self-hosted Team Task Management               ║"
+echo " ╚══════════════════════════════════════════════════╝"
 echo ""
 
 # ── 1. Check Node.js ──────────────────────────────────────────────────────────
-echo "[1/5] Checking Node.js..."
+echo "[1/6] Checking Node.js..."
 if ! command -v node &>/dev/null; then
     echo " ERROR: Node.js is not installed."
     echo " Please install Node.js 18+ from https://nodejs.org"
     exit 1
 fi
 NODE_VER=$(node --version)
-echo " OK: Node.js $NODE_VER found"
+MAJOR=$(echo "$NODE_VER" | sed 's/v//' | cut -d. -f1)
+if [ "$MAJOR" -lt 18 ]; then
+    echo " ERROR: Node.js 18+ required. You have $NODE_VER"
+    exit 1
+fi
+echo " OK: Node.js $NODE_VER"
 
 # ── 2. Install dependencies ───────────────────────────────────────────────────
 echo ""
-echo "[2/5] Installing dependencies..."
-npm install --legacy-peer-deps
+echo "[2/6] Installing dependencies..."
+npm install --legacy-peer-deps --silent
 echo " OK: Dependencies installed"
 
-# ── 3. Set up .env.local ──────────────────────────────────────────────────────
+# ── 3. Database selection ─────────────────────────────────────────────────────
 echo ""
-echo "[3/5] Setting up environment file..."
-if [ ! -f ".env.local" ]; then
-    if [ -f ".env.local.example" ]; then
-        cp ".env.local.example" ".env.local"
-        echo " Created .env.local from .env.local.example"
-    else
-        SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")
-        cat > ".env.local" <<EOF
-# Database
+echo " ╔══════════════════════════════════════════════════╗"
+echo " ║              Choose Your Database               ║"
+echo " ╠══════════════════════════════════════════════════╣"
+echo " ║                                                  ║"
+echo " ║  1) SQLite  (default)                            ║"
+echo " ║     · Zero config, file on disk                  ║"
+echo " ║     · Best for: 1-30 users, single server        ║"
+echo " ║     · No installation required                   ║"
+echo " ║                                                  ║"
+echo " ║  2) PostgreSQL  (recommended for enterprise)     ║"
+echo " ║     · Concurrent writes, connection pooling      ║"
+echo " ║     · Best for: 30-500+ users, HA deployments   ║"
+echo " ║     · Supports Supabase, Neon, Railway, RDS      ║"
+echo " ║                                                  ║"
+echo " ║  3) MySQL / MariaDB                              ║"
+echo " ║     · Use if you already run MySQL infrastructure ║"
+echo " ║     · Supports PlanetScale, RDS, Railway         ║"
+echo " ║                                                  ║"
+echo " ╚══════════════════════════════════════════════════╝"
+echo ""
+read -rp " Enter choice [1/2/3] (default: 1): " DB_CHOICE
+DB_CHOICE=${DB_CHOICE:-1}
+
+DB_PROVIDER="sqlite"
 DATABASE_URL="file:./kanboard.db"
 
-# NextAuth v5
-AUTH_SECRET="${SECRET}"
-AUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="${SECRET}"
-NEXTAUTH_URL="http://localhost:3000"
+if [ "$DB_CHOICE" = "2" ]; then
+    DB_PROVIDER="postgresql"
+    echo ""
+    echo " PostgreSQL connection string format:"
+    echo "   postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
+    echo ""
+    echo " Examples:"
+    echo "   Local:    postgresql://kanboard:pass@localhost:5432/kanboard"
+    echo "   Supabase: postgresql://postgres:pass@db.xxx.supabase.co:5432/postgres"
+    echo "   Neon:     postgresql://user:pass@ep-xxx.neon.tech/kanboard?sslmode=require"
+    echo "   Railway:  (copy from Railway dashboard Variables tab)"
+    echo ""
+    echo " See docs/database-setup.md for full setup instructions."
+    echo ""
+    read -rp " Enter PostgreSQL connection string: " DATABASE_URL
+    if [ -z "$DATABASE_URL" ]; then
+        echo " ERROR: Connection string cannot be empty."
+        exit 1
+    fi
+    echo " OK: PostgreSQL selected"
 
-# Microsoft Azure AD (SSO - optional)
+elif [ "$DB_CHOICE" = "3" ]; then
+    DB_PROVIDER="mysql"
+    echo ""
+    echo " MySQL connection string format:"
+    echo "   mysql://USER:PASSWORD@HOST:PORT/DATABASE"
+    echo ""
+    echo " Examples:"
+    echo "   Local:       mysql://kanboard:pass@localhost:3306/kanboard"
+    echo "   PlanetScale: mysql://user:pass@host.psdb.cloud/kanboard?ssl={\"rejectUnauthorized\":true}"
+    echo "   Railway:     (copy from Railway dashboard Variables tab)"
+    echo ""
+    echo " See docs/database-setup.md for full setup instructions."
+    echo ""
+    read -rp " Enter MySQL connection string: " DATABASE_URL
+    if [ -z "$DATABASE_URL" ]; then
+        echo " ERROR: Connection string cannot be empty."
+        exit 1
+    fi
+    echo " OK: MySQL selected"
+
+else
+    echo " OK: SQLite selected (default)"
+fi
+
+# Update schema.prisma provider if not SQLite
+if [ "$DB_PROVIDER" != "sqlite" ]; then
+    echo ""
+    echo " Updating Prisma schema provider to $DB_PROVIDER..."
+    sed -i.bak "s/provider = \"sqlite\"/provider = \"$DB_PROVIDER\"/" prisma/schema.prisma
+    rm -f prisma/schema.prisma.bak
+    echo " OK: prisma/schema.prisma updated"
+fi
+
+# ── 4. Set up .env.local ──────────────────────────────────────────────────────
+echo ""
+echo "[4/6] Setting up environment file..."
+
+if command -v openssl &>/dev/null; then
+    SECRET=$(openssl rand -base64 32)
+else
+    SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))")
+fi
+
+if hostname -I &>/dev/null 2>&1; then
+    LAN_IP=$(hostname -I | awk '{print $1}')
+else
+    LAN_IP="localhost"
+fi
+
+if [ ! -f ".env.local" ]; then
+    cat > .env.local << ENVEOF
+# ── Database ──────────────────────────────────────────────────────────────────
+DATABASE_URL="${DATABASE_URL}"
+
+# ── NextAuth v5 ───────────────────────────────────────────────────────────────
+AUTH_SECRET="${SECRET}"
+AUTH_URL="http://${LAN_IP}:3000"
+NEXTAUTH_SECRET="${SECRET}"
+NEXTAUTH_URL="http://${LAN_IP}:3000"
+
+# ── Microsoft Azure AD (SSO) ── leave blank to disable ───────────────────────
 AZURE_AD_CLIENT_ID=""
 AZURE_AD_CLIENT_SECRET=""
 AZURE_AD_TENANT_ID=""
 
-# Email SMTP (optional)
+# ── Email (SMTP) ── leave blank to disable ────────────────────────────────────
 SMTP_HOST=""
 SMTP_PORT="587"
 SMTP_USER=""
 SMTP_PASS=""
 SMTP_FROM="KanBoard <noreply@kanboard.local>"
 
-# Web Push VAPID (optional - run: npx web-push generate-vapid-keys)
+# ── Browser Push Notifications ── leave blank to disable ─────────────────────
 VAPID_PUBLIC_KEY=""
 VAPID_PRIVATE_KEY=""
 VAPID_SUBJECT="mailto:admin@kanboard.local"
 
-# Microsoft Teams (optional)
+# ── Microsoft Teams ── leave blank to disable ─────────────────────────────────
 TEAMS_WEBHOOK_URL=""
 
-# MS Graph API / Planner (optional)
+# ── MS Graph API (Planner sync) ── leave blank to disable ────────────────────
 GRAPH_CLIENT_ID=""
 GRAPH_CLIENT_SECRET=""
 GRAPH_TENANT_ID=""
 
-# Server
+# ── Server ────────────────────────────────────────────────────────────────────
 PORT=3000
-EOF
-        echo " Created .env.local with a generated AUTH_SECRET"
-    fi
+ENVEOF
+    echo " OK: .env.local created"
 else
-    echo " OK: .env.local already exists (skipping)"
+    sed -i.bak "s|^DATABASE_URL=.*|DATABASE_URL=\"${DATABASE_URL}\"|" .env.local
+    rm -f .env.local.bak
+    echo " OK: .env.local exists — DATABASE_URL updated"
 fi
 
-# ── 4. Database migration ─────────────────────────────────────────────────────
+# ── 5. Database setup ─────────────────────────────────────────────────────────
 echo ""
-echo "[4/5] Running database migration..."
-export DATABASE_URL="file:./kanboard.db"
-if ! npx prisma migrate deploy 2>/dev/null; then
-    npx prisma migrate dev --name init
-fi
-echo " OK: Database schema ready"
+echo "[5/6] Setting up database schema..."
+export DATABASE_URL="$DATABASE_URL"
 
-# ── 5. Seed default data ──────────────────────────────────────────────────────
-echo ""
-echo "[5/5] Seeding default data..."
-if [ -f "kanboard.db" ]; then
-    echo " Skipping seed — database already exists"
-else
-    export DATABASE_URL="file:./kanboard.db"
-    if ! npx tsx prisma/seed.ts; then
-        echo " WARNING: Seed failed. Re-run with: npm run db:seed"
+npx prisma generate --silent
+
+if [ "$DB_PROVIDER" = "sqlite" ]; then
+    if [ -f "kanboard.db" ]; then
+        echo " Existing database found — applying migrations..."
+        npx prisma migrate deploy 2>/dev/null || npx prisma db push --accept-data-loss
     else
-        echo " OK: Default data seeded"
+        echo " Creating new database..."
+        npx prisma migrate deploy 2>/dev/null || npx prisma db push
+        echo " Seeding initial data (admin user, sample workspace)..."
+        npx tsx prisma/seed.ts
     fi
+else
+    echo " Pushing schema to $DB_PROVIDER..."
+    npx prisma db push --accept-data-loss
+    echo " Seeding initial data (admin user, sample workspace)..."
+    npx tsx prisma/seed.ts
 fi
 
-# ── Done ──────────────────────────────────────────────────────────────────────
+echo " OK: Database ready"
+
+# ── 6. Summary ────────────────────────────────────────────────────────────────
 echo ""
-echo " ====================================================="
-echo "  Setup complete!"
-echo " ====================================================="
-echo ""
-echo " Default accounts:"
-echo "   Admin   : admin@kanboard.local   / admin123"
-echo "   Manager : manager@kanboard.local / manager123"
-echo "   Member  : member@kanboard.local  / member123"
-echo ""
-echo " To start the server:"
-echo "   ./start.sh         (dev mode)"
-echo "   ./start.sh prod    (production mode)"
+echo " ╔══════════════════════════════════════════════════╗"
+echo " ║               Setup Complete!                    ║"
+echo " ╠══════════════════════════════════════════════════╣"
+echo " ║                                                  ║"
+echo " ║  Default credentials:                            ║"
+echo " ║    Email:    admin@kanboard.local                ║"
+echo " ║    Password: admin123                            ║"
+echo " ║                                                  ║"
+echo " ║  Start the server:                               ║"
+echo " ║    ./start.sh          (development)             ║"
+echo " ║    ./start.sh prod     (production build)        ║"
+echo " ║                                                  ║"
+if [ "$DB_PROVIDER" != "sqlite" ]; then
+echo " ║  Database: $DB_PROVIDER                          ║"
+echo " ║  Docs: docs/database-setup.md                   ║"
+echo " ║  (backup, pooling, HA, migration guide)          ║"
+echo " ║                                                  ║"
+fi
+echo " ╚══════════════════════════════════════════════════╝"
 echo ""
