@@ -36,6 +36,7 @@ model User {
   notifConfig       NotifConfig?
   boardMembers      BoardMember[]
   watching          TaskWatcher[]
+  timeLogs          TimeLog[]
 
   @@index([teamId])
 }
@@ -145,11 +146,12 @@ model BoardMember {
 }
 
 model Column {
-  id      String @id @default(cuid())
-  boardId String
-  name    String
-  color   String @default("#6366f1")
-  order   Int    @default(0)
+  id       String @id @default(cuid())
+  boardId  String
+  name     String
+  color    String @default("#6366f1")
+  order    Int    @default(0)
+  wipLimit Int?
 
   board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
   tasks Task[]
@@ -195,6 +197,7 @@ model Task {
   blocks       TaskDependency[] @relation("TaskBlocks")
   blockedBy    TaskDependency[] @relation("TaskBlockedBy")
   watchers     TaskWatcher[]
+  timeLogs     TimeLog[]
 
   @@index([boardId])
   @@index([columnId])
@@ -398,4 +401,70 @@ model TaskWatcher {
 
   @@id([taskId, userId])
   @@index([userId])
+}
+
+// ─── Time Tracking ────────────────────────────────────────────────────────────
+
+model TimeLog {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  minutes   Int
+  note      String?
+  startedAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([userId])
+}
+
+// ─── Board Templates ──────────────────────────────────────────────────────────
+
+model BoardTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  columns     ColumnTemplate[]
+  slaPolicy   TemplateSLAPolicy?
+}
+
+model ColumnTemplate {
+  id              String @id @default(cuid())
+  boardTemplateId String
+  name            String
+  color           String @default("#6366f1")
+  order           Int    @default(0)
+  wipLimit        Int?
+
+  boardTemplate BoardTemplate @relation(fields: [boardTemplateId], references: [id], onDelete: Cascade)
+}
+
+model TemplateSLAPolicy {
+  id              String @id @default(cuid())
+  boardTemplateId String @unique
+
+  criticalHours Int @default(4)
+  highHours     Int @default(24)
+  mediumHours   Int @default(72)
+  lowHours      Int @default(168)
+
+  boardTemplate BoardTemplate @relation(fields: [boardTemplateId], references: [id], onDelete: Cascade)
+}
+
+// ─── Task Templates ───────────────────────────────────────────────────────────
+
+model TaskTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  priority    String   @default("MEDIUM")
+  labelIds    String   @default("[]") // JSON array of label IDs
+  subtasks    String   @default("[]") // JSON array of subtask titles
+  createdById String
+  createdAt   DateTime @default(now())
 }

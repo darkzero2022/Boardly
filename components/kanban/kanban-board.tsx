@@ -20,6 +20,8 @@ import { NewColumnButton } from "./new-column-button";
 import { BoardHeader } from "./board-header";
 import { BulkActionBar } from "./bulk-action-bar";
 import { CalendarView } from "./calendar-view";
+import { SwimlaneView } from "./swimlane-view";
+import { KeyboardShortcutsOverlay } from "./keyboard-shortcuts-overlay";
 import { useSocketContext } from "@/components/socket-provider";
 import { SOCKET_EVENTS } from "@/lib/socket";
 import { Plus } from "lucide-react";
@@ -61,6 +63,7 @@ interface Column {
   name: string;
   color: string;
   order: number;
+  wipLimit?: number | null;
   tasks: Task[];
 }
 
@@ -95,6 +98,8 @@ export function KanbanBoard({
   const [view, setView] = useState<"kanban" | "calendar">("kanban");
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [swimlaneMode, setSwimlaneMode] = useState<"off" | "assignee" | "priority" | "label">("off");
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const { socket, joinBoard, leaveBoard } = useSocketContext();
 
@@ -107,6 +112,20 @@ export function KanbanBoard({
     joinBoard(board.id);
     return () => leaveBoard(board.id);
   }, [board.id, joinBoard, leaveBoard]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "?") setShowShortcuts(true);
+      if (e.key === "b" || e.key === "B") setBulkMode((prev) => !prev);
+      if (e.key === "1") setView("kanban");
+      if (e.key === "2") setView("calendar");
+      if (e.key === "Escape") { setShowShortcuts(false); setBulkMode(false); }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
 
   // Listen for real-time task events
   useEffect(() => {
@@ -269,10 +288,26 @@ export function KanbanBoard({
         onViewChange={setView}
         bulkMode={bulkMode}
         onBulkToggle={() => { setBulkMode(b => !b); setSelectedTasks(new Set()); }}
+        swimlaneMode={swimlaneMode}
+        onSwimlaneModeChange={setSwimlaneMode}
+        onShowShortcuts={() => setShowShortcuts(true)}
       />
 
       <div className="flex-1 flex overflow-hidden">
-        {view === "kanban" && (
+        {view === "kanban" && swimlaneMode !== "off" && (
+          <div className="flex-1 overflow-auto p-6">
+            <SwimlaneView
+              columns={columns as any}
+              boardId={board.id}
+              users={users}
+              labels={labels}
+              groupBy={swimlaneMode}
+              onTaskClick={(taskId) => setSelectedTaskId(taskId)}
+            />
+          </div>
+        )}
+
+        {view === "kanban" && swimlaneMode === "off" && (
           <DndContext
             sensors={sensors}
             collisionDetection={closestCorners}
@@ -363,6 +398,8 @@ export function KanbanBoard({
         onDelete={() => handleBulkAction("delete", {})}
         onClear={() => { setSelectedTasks(new Set()); }}
       />
+
+      <KeyboardShortcutsOverlay open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>
   );
 }

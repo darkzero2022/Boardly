@@ -1,9 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Settings, LayoutGrid, Calendar, CheckSquare } from "lucide-react";
+import { ArrowLeft, Settings, LayoutGrid, Calendar, CheckSquare, Rows3, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BoardFilters } from "./board-filters";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+type SwimlaneMode = "off" | "assignee" | "priority" | "label";
 
 interface BoardHeaderProps {
   board: {
@@ -16,9 +24,29 @@ interface BoardHeaderProps {
   onViewChange: (v: "kanban" | "calendar") => void;
   bulkMode: boolean;
   onBulkToggle: () => void;
+  swimlaneMode: SwimlaneMode;
+  onSwimlaneModeChange: (mode: SwimlaneMode) => void;
+  onShowShortcuts: () => void;
 }
 
-export function BoardHeader({ board, session, view, onViewChange, bulkMode, onBulkToggle }: BoardHeaderProps) {
+const swimlaneLabels: Record<SwimlaneMode, string> = {
+  off: "Swimlanes",
+  assignee: "By Assignee",
+  priority: "By Priority",
+  label: "By Label",
+};
+
+export function BoardHeader({
+  board,
+  session,
+  view,
+  onViewChange,
+  bulkMode,
+  onBulkToggle,
+  swimlaneMode,
+  onSwimlaneModeChange,
+  onShowShortcuts,
+}: BoardHeaderProps) {
   return (
     <div className="flex items-center gap-3 px-6 py-3 border-b border-border bg-background">
       <Link href={`/workspaces/${board.workspace.id}`}>
@@ -53,6 +81,24 @@ export function BoardHeader({ board, session, view, onViewChange, bulkMode, onBu
         </button>
       </div>
 
+      {/* Swimlane dropdown */}
+      {view === "kanban" && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant={swimlaneMode !== "off" ? "default" : "outline"} size="sm" className="gap-1.5">
+              <Rows3 className="w-3.5 h-3.5" />
+              {swimlaneLabels[swimlaneMode]}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onSwimlaneModeChange("off")}>Off</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSwimlaneModeChange("assignee")}>By Assignee</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSwimlaneModeChange("priority")}>By Priority</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSwimlaneModeChange("label")}>By Label</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
       <Button
         variant={bulkMode ? "default" : "outline"}
         size="sm"
@@ -73,6 +119,10 @@ export function BoardHeader({ board, session, view, onViewChange, bulkMode, onBu
           </Button>
         </Link>
       )}
+
+      <Button variant="ghost" size="icon" onClick={onShowShortcuts} title="Keyboard shortcuts (?)">
+        <HelpCircle className="w-4 h-4" />
+      </Button>
     </div>
   );
 }

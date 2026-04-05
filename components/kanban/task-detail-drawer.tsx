@@ -16,6 +16,7 @@ interface Label { id: string; name: string; color: string }
 
 interface DepTask { id: string; title: string; dependsOnId?: string; taskId?: string; dependsOn?: { title: string }; task?: { title: string } }
 interface Attachment { id: string; filename: string; originalName: string; mimeType: string; size: number; path: string; createdAt: string; uploadedBy: { name: string | null } }
+interface TimeLogEntry { id: string; minutes: number; note: string | null; startedAt: string; user: { id: string; name: string | null; image: string | null } }
 
 interface TaskDetail {
   id: string;
@@ -48,7 +49,7 @@ interface TaskDetailDrawerProps {
   onDeleted: (taskId: string) => void;
 }
 
-type ActiveTab = "details" | "comments" | "history" | "subtasks" | "attachments";
+type ActiveTab = "details" | "comments" | "history" | "subtasks" | "attachments" | "time";
 
 export function TaskDetailDrawer({
   taskId,
@@ -77,6 +78,10 @@ export function TaskDetailDrawer({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [timeLogs, setTimeLogs] = useState<TimeLogEntry[]>([]);
+  const [logMinutes, setLogMinutes] = useState("");
+  const [logNote, setLogNote] = useState("");
+  const [loggingTime, setLoggingTime] = useState(false);
 
   useEffect(() => {
     fetch(`/api/tasks/${taskId}`)
@@ -102,6 +107,10 @@ export function TaskDetailDrawer({
     fetch(`/api/tasks/${taskId}/attachments`)
       .then((r) => r.json())
       .then((d) => Array.isArray(d) && setAttachments(d))
+      .catch(() => {});
+    fetch(`/api/tasks/${taskId}/timelogs`)
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setTimeLogs(d))
       .catch(() => {});
   }, [taskId]);
 
@@ -185,11 +194,40 @@ export function TaskDetailDrawer({
     }
   }
 
+  async function logTime() {
+    const mins = parseInt(logMinutes);
+    if (!mins || mins <= 0) return;
+    setLoggingTime(true);
+    const res = await fetch(`/api/tasks/${taskId}/timelogs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ minutes: mins, note: logNote || undefined }),
+    });
+    if (res.ok) {
+      const entry = await res.json();
+      setTimeLogs((prev) => [...prev, entry]);
+      setLogMinutes("");
+      setLogNote("");
+    }
+    setLoggingTime(false);
+  }
+
+  async function deleteTimeLog(logId: string) {
+    await fetch(`/api/tasks/${taskId}/timelogs/${logId}`, { method: "DELETE" });
+    setTimeLogs((prev) => prev.filter((l) => l.id !== logId));
+  }
+
+  const totalMinutes = timeLogs.reduce((sum, l) => sum + l.minutes, 0);
+  const totalTime = totalMinutes >= 60
+    ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
+    : `${totalMinutes}m`;
+
   const tabs: { key: ActiveTab; label: string }[] = [
     { key: "details", label: "Details" },
     { key: "comments", label: "Comments" },
     { key: "subtasks", label: "Subtasks" },
     { key: "attachments", label: `Attachments${attachments.length > 0 ? ` (${attachments.length})` : ""}` },
+    { key: "time", label: `Time${timeLogs.length > 0 ? ` (${totalTime})` : ""}` },
     { key: "history", label: "History" },
   ];
 
@@ -557,6 +595,72 @@ export function TaskDetailDrawer({
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+              {activeTab === "time" && (
+                <div className="p-6 space-y-4">
+                  {totalMinutes > 0 && (
+                    <div className="text-sm font-medium text-foreground bg-muted rounded-lg px-4 py-2 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      Total logged: <span className="font-bold">{totalTime}</span>
+                    </div>
+                  )}
+
+                  {/* Log time form */}
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Minutes"
+                      value={logMinutes}
+                      onChange={(e) => setLogMinutes(e.target.value)}
+                      className="w-28"
+                      min={1}
+                    />
+                    <Input
+                      placeholder="Note (optional)"
+                      value={logNote}
+                      onChange={(e) => setLogNote(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button size="sm" onClick={logTime} disabled={loggingTime || !logMinutes}>
+                      {loggingTime ? "..." : "Log"}
+                    </Button>
+                  </div>
+
+                  {/* Time log list */}
+                  <div className="space-y-2">
+                    {timeLogs.length === 0 && (
+                      <p className="text-sm text-muted-foreground">No time logged yet.</p>
+                    )}
+                    {timeLogs.map((log) => (
+                      <div key={log.id} className="flex items-start justify-between gap-3 p-3 rounded-lg border border-border">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                            {(log.user.name ?? "?")[0].toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">{log.user.name ?? "Unknown"}</span>
+                              <span className="text-xs font-semibold text-primary">{log.minutes}m</span>
+                            </div>
+                            {log.note && <p className="text-xs text-muted-foreground truncate">{log.note}</p>}
+                            <p className="text-xs text-muted-foreground">{timeAgo(log.startedAt)}</p>
+                          </div>
+                        </div>
+                        {log.user.id === currentUserId && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                            onClick={() => deleteTimeLog(log.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
