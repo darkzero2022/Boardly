@@ -40,6 +40,9 @@ interface KanbanColumnProps {
   labels: { id: string; name: string; color: string }[];
   onTaskClick: (taskId: string) => void;
   onTaskCreated: (task: Task) => void;
+  bulkMode?: boolean;
+  selectedTasks?: Set<string>;
+  onSelect?: (taskId: string, selected: boolean) => void;
 }
 
 export function KanbanColumn({
@@ -49,6 +52,9 @@ export function KanbanColumn({
   labels,
   onTaskClick,
   onTaskCreated,
+  bulkMode,
+  selectedTasks,
+  onSelect,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
@@ -96,7 +102,13 @@ export function KanbanColumn({
           className="flex-1 px-2 pb-2 space-y-2 min-h-[120px] overflow-y-auto max-h-[calc(100vh-220px)]"
         >
           {column.tasks.map((task) => (
-            <TaskCard key={task.id} task={task} onClick={onTaskClick} />
+            <TaskCard
+              key={task.id}
+              task={task}
+              onClick={onTaskClick}
+              selected={selectedTasks?.has(task.id)}
+              onSelect={bulkMode ? onSelect : undefined}
+            />
           ))}
         </div>
       </SortableContext>

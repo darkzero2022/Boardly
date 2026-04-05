@@ -55,6 +55,7 @@ export default async function EmbedBoardPage({
         users={users}
         labels={labels}
         currentUserId={session.user.id}
+        session={session as any}
       />
     </div>
   );
