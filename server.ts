@@ -53,7 +53,7 @@ app.prepare().then(() => {
   });
 
   httpServer.listen(port, hostname, () => {
-    console.log(`\n> KanBoard ready on http://${hostname}:${port}`);
+    console.log(`\n> Boardly ready on http://${hostname}:${port}`);
     console.log(`> LAN access: http://[your-local-ip]:${port}`);
     console.log(`> Socket.io attached on /socket.io\n`);
 

@@ -1,6 +1,6 @@
-# KanBoard — Database Setup Guide
+# Boardly — Database Setup Guide
 
-KanBoard supports three database backends. Choose the one that fits your deployment size and infrastructure.
+Boardly supports three database backends. Choose the one that fits your deployment size and infrastructure.
 
 ---
 
@@ -352,7 +352,7 @@ gunzip -c /backups/kanboard-20260405.sql.gz | mysql -u kanboard -p'password' kan
 ## Troubleshooting
 
 ### "Database is locked" (SQLite only)
-Multiple processes are trying to write simultaneously. Ensure only one KanBoard instance is running:
+Multiple processes are trying to write simultaneously. Ensure only one Boardly instance is running:
 ```bash
 # Windows
 taskkill /F /IM node.exe

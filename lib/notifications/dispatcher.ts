@@ -77,7 +77,7 @@ export async function dispatch(payload: DispatchPayload) {
     promises.push(
       sendEmail({
         to: user.email,
-        subject: `KanBoard: ${payload.type.replace(/_/g, " ")}`,
+        subject: `Boardly: ${payload.type.replace(/_/g, " ")}`,
         text: payload.message,
         html: `<p>${payload.message}</p>${
           payload.link

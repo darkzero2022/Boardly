@@ -40,7 +40,7 @@ export function Sidebar() {
           <div className="w-7 h-7 bg-sidebar-primary rounded-lg flex items-center justify-center">
             <Kanban className="w-4 h-4 text-white" />
           </div>
-          <span className="text-sidebar-foreground font-semibold text-sm">KanBoard</span>
+          <span className="text-sidebar-foreground font-semibold text-sm">Boardly</span>
         </div>
       </div>
 

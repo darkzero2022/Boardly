@@ -37,7 +37,7 @@ async function getAppAccessToken(): Promise<string> {
 }
 
 /**
- * Push a KanBoard task to Microsoft Planner.
+ * Push a Boardly task to Microsoft Planner.
  */
 export async function pushTaskToPlanner(taskId: string) {
   const task = await prisma.task.findUnique({
@@ -86,7 +86,7 @@ export async function pushTaskToPlanner(taskId: string) {
 }
 
 /**
- * Pull an update from a Planner task into KanBoard.
+ * Pull an update from a Planner task into Boardly.
  */
 export async function pullTaskFromPlanner(plannerId: string) {
   const sync = await prisma.plannerSync.findFirst({

@@ -6,7 +6,7 @@ import { Providers } from "@/components/providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "KanBoard — Team Task Management",
+  title: "Boardly — Team Task Management",
   description: "Self-hosted Kanban board for your team",
 };
 

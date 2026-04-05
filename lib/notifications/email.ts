@@ -39,7 +39,7 @@ export async function sendEmail(payload: EmailPayload) {
   try {
     const transporter = await getTransporter();
     await transporter.sendMail({
-      from: process.env.SMTP_FROM ?? "KanBoard <noreply@kanboard.local>",
+      from: process.env.SMTP_FROM ?? "Boardly <noreply@boardly.local>",
       to: payload.to,
       subject: payload.subject,
       text: payload.text,

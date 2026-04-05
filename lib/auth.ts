@@ -5,6 +5,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { authenticateLdap, isLdapEnabled } from "@/lib/auth/ldap";
 
 export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
   // Fetch global config from DB to determine which providers are enabled
@@ -17,6 +18,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
 
   const providers = [];
 
+  // ── Microsoft Entra ID (Azure AD SSO) ───────────────────────────────────────
   if (allowSSO && process.env.AZURE_AD_CLIENT_ID) {
     providers.push(
       MicrosoftEntraID({
@@ -27,9 +29,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
     );
   }
 
+  // ── Local credentials ────────────────────────────────────────────────────────
   if (allowCreds) {
     providers.push(
       Credentials({
+        id: "credentials",
         credentials: {
           email: { label: "Email", type: "email" },
           password: { label: "Password", type: "password" },
@@ -59,6 +63,67 @@ export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
             email: user.email,
             image: user.image,
             role: user.role,
+          };
+        },
+      })
+    );
+  }
+
+  // ── LDAP / Active Directory ──────────────────────────────────────────────────
+  if (isLdapEnabled()) {
+    providers.push(
+      Credentials({
+        id: "ldap",
+        credentials: {
+          username: { label: "Username", type: "text" },
+          password: { label: "Password", type: "password" },
+        },
+        async authorize(credentials) {
+          const parsed = z
+            .object({ username: z.string().min(1), password: z.string().min(1) })
+            .safeParse(credentials);
+
+          if (!parsed.success) return null;
+
+          // Authenticate against the LDAP server
+          const ldapUser = await authenticateLdap(
+            parsed.data.username,
+            parsed.data.password
+          );
+          if (!ldapUser) return null;
+
+          // Auto-provision: find or create the user in the local DB
+          let dbUser = await prisma.user.findUnique({
+            where: { email: ldapUser.email },
+          });
+
+          if (!dbUser) {
+            // First LDAP login — create the user (no password hash; LDAP-only)
+            dbUser = await prisma.user.create({
+              data: {
+                email: ldapUser.email,
+                name: ldapUser.displayName,
+                role: "MEMBER",
+                // passwordHash intentionally null — can only login via LDAP
+              },
+            });
+            console.log(`[LDAP] Auto-provisioned new user: ${ldapUser.email}`);
+          } else {
+            // Update display name if it changed in the directory
+            if (dbUser.name !== ldapUser.displayName) {
+              await prisma.user.update({
+                where: { id: dbUser.id },
+                data: { name: ldapUser.displayName },
+              });
+            }
+          }
+
+          return {
+            id: dbUser.id,
+            name: ldapUser.displayName,
+            email: ldapUser.email,
+            image: dbUser.image,
+            role: dbUser.role,
           };
         },
       })

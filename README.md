@@ -1,4 +1,4 @@
-# KanBoard — Self-Hosted Team Task Management
+# Boardly — Self-Hosted Team Task Management
 
 > A full-featured, self-hosted Kanban application for teams of 16–500 users. Built like Asana — drag-and-drop boards, SLA tracking, time tracking, swimlanes, Microsoft 365 integration, real-time collaboration, and role-based access. No cloud dependency required. Runs on your own server or LAN.
 
@@ -135,16 +135,16 @@ SLA breach rates, workload distribution, task completion trends.
 
 ### Windows
 ```bat
-git clone https://github.com/darkzero2022/KanBoard.git
-cd KanBoard
+git clone https://github.com/darkzero2022/Boardly.git
+cd Boardly
 setup.bat
 start.bat
 ```
 
 ### Linux / macOS
 ```bash
-git clone https://github.com/darkzero2022/KanBoard.git
-cd KanBoard
+git clone https://github.com/darkzero2022/Boardly.git
+cd Boardly
 chmod +x setup.sh start.sh
 ./setup.sh
 ./start.sh
@@ -160,7 +160,7 @@ The setup script will:
 
 **Default credentials after setup:**
 ```
-Email:    admin@kanboard.local
+Email:    admin@boardly.local
 Password: admin123
 ```
 
@@ -243,7 +243,7 @@ start.bat prod
 ## Microsoft SSO Configuration
 
 1. Go to [Azure Portal](https://portal.azure.com) → Azure Active Directory → App registrations → New registration
-2. Name: `KanBoard`, Supported account types: your tenant
+2. Name: `Boardly`, Supported account types: your tenant
 3. Redirect URI: `http://YOUR_SERVER_IP:3000/api/auth/callback/azure-ad`
 4. After creation: note the **Application (client) ID** and **Directory (tenant) ID**
 5. Go to **Certificates & secrets** → New client secret → copy the value
@@ -369,7 +369,7 @@ npx tsx prisma/seed.ts
 ## Project Structure
 
 ```
-KanBoard/
+Boardly/
 ├── app/                    # Next.js App Router pages & API routes
 │   ├── (dashboard)/        # Authenticated pages (board, workspace, reports…)
 │   ├── api/                # REST API routes

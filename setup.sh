@@ -3,7 +3,7 @@ set -e
 
 echo ""
 echo " ╔══════════════════════════════════════════════════╗"
-echo " ║          KanBoard Setup — v3.0                   ║"
+echo " ║            Boardly Setup — v3.0                  ║"
 echo " ║   Self-hosted Team Task Management               ║"
 echo " ╚══════════════════════════════════════════════════╝"
 echo ""
@@ -111,6 +111,74 @@ if [ "$DB_PROVIDER" != "sqlite" ]; then
     echo " OK: prisma/schema.prisma updated"
 fi
 
+# ── 3b. LDAP / Active Directory ──────────────────────────────────────────────
+echo ""
+echo " ╔══════════════════════════════════════════════════╗"
+echo " ║        LDAP / Active Directory Auth             ║"
+echo " ╠══════════════════════════════════════════════════╣"
+echo " ║  Enable if you have an on-premise AD / LDAP      ║"
+echo " ║  server. Leave blank to use local accounts only. ║"
+echo " ╚══════════════════════════════════════════════════╝"
+echo ""
+read -rp " Enable LDAP authentication? [y/N]: " LDAP_ENABLE
+LDAP_ENABLE=${LDAP_ENABLE:-n}
+
+LDAP_URI=""
+LDAP_BASE_DN=""
+LDAP_BIND_DN=""
+LDAP_BIND_PASSWORD=""
+LDAP_USER_FILTER="(|(sAMAccountName={{username}})(uid={{username}})(userPrincipalName={{username}}))"
+LDAP_TLS_REJECT_UNAUTHORIZED="true"
+
+if [[ "$LDAP_ENABLE" =~ ^[Yy]$ ]]; then
+    echo ""
+    echo " LDAP URI examples:"
+    echo "   Active Directory:  ldap://dc.company.com:389"
+    echo "   OpenLDAP:          ldap://ldap.company.com:389"
+    echo "   LDAPS (TLS):       ldaps://dc.company.com:636"
+    echo ""
+    read -rp " LDAP server URI (e.g. ldap://dc.company.com:389): " LDAP_URI
+    if [ -z "$LDAP_URI" ]; then
+        echo " LDAP URI cannot be empty — skipping LDAP setup."
+        LDAP_URI=""
+    else
+        echo ""
+        echo " Base DN examples:"
+        echo "   dc=company,dc=com"
+        echo "   dc=corp,dc=example,dc=org"
+        echo ""
+        read -rp " Base DN (e.g. dc=company,dc=com): " LDAP_BASE_DN
+        if [ -z "$LDAP_BASE_DN" ]; then
+            echo " Base DN cannot be empty — skipping LDAP setup."
+            LDAP_URI=""
+        else
+            echo ""
+            echo " Service account (optional — for servers that require auth to search):"
+            read -rp " Bind DN (leave blank for anonymous bind): " LDAP_BIND_DN
+            if [ -n "$LDAP_BIND_DN" ]; then
+                read -rsp " Bind password: " LDAP_BIND_PASSWORD
+                echo ""
+            fi
+            echo ""
+            echo " User filter — {{username}} is replaced with the entered login."
+            echo "   Default covers AD sAMAccountName, uid, and userPrincipalName."
+            read -rp " User filter [press Enter for default]: " LDAP_USER_FILTER_INPUT
+            if [ -n "$LDAP_USER_FILTER_INPUT" ]; then
+                LDAP_USER_FILTER="$LDAP_USER_FILTER_INPUT"
+            fi
+            echo ""
+            read -rp " Reject unauthorized TLS certificates? [Y/n]: " TLS_REJECT
+            TLS_REJECT=${TLS_REJECT:-Y}
+            if [[ "$TLS_REJECT" =~ ^[Nn]$ ]]; then
+                LDAP_TLS_REJECT_UNAUTHORIZED="false"
+            fi
+            echo " OK: LDAP configured"
+        fi
+    fi
+else
+    echo " OK: LDAP disabled — users will authenticate with local accounts"
+fi
+
 # ── 4. Set up .env.local ──────────────────────────────────────────────────────
 echo ""
 echo "[4/6] Setting up environment file..."
@@ -138,6 +206,14 @@ AUTH_URL="http://${LAN_IP}:3000"
 NEXTAUTH_SECRET="${SECRET}"
 NEXTAUTH_URL="http://${LAN_IP}:3000"
 
+# ── LDAP / Active Directory ───────────────────────────────────────────────────
+LDAP_URI="${LDAP_URI}"
+LDAP_BASE_DN="${LDAP_BASE_DN}"
+LDAP_BIND_DN="${LDAP_BIND_DN}"
+LDAP_BIND_PASSWORD="${LDAP_BIND_PASSWORD}"
+LDAP_USER_FILTER="${LDAP_USER_FILTER}"
+LDAP_TLS_REJECT_UNAUTHORIZED="${LDAP_TLS_REJECT_UNAUTHORIZED}"
+
 # ── Microsoft Azure AD (SSO) ── leave blank to disable ───────────────────────
 AZURE_AD_CLIENT_ID=""
 AZURE_AD_CLIENT_SECRET=""
@@ -148,12 +224,12 @@ SMTP_HOST=""
 SMTP_PORT="587"
 SMTP_USER=""
 SMTP_PASS=""
-SMTP_FROM="KanBoard <noreply@kanboard.local>"
+SMTP_FROM="Boardly <noreply@boardly.local>"
 
 # ── Browser Push Notifications ── leave blank to disable ─────────────────────
 VAPID_PUBLIC_KEY=""
 VAPID_PRIVATE_KEY=""
-VAPID_SUBJECT="mailto:admin@kanboard.local"
+VAPID_SUBJECT="mailto:admin@boardly.local"
 
 # ── Microsoft Teams ── leave blank to disable ─────────────────────────────────
 TEAMS_WEBHOOK_URL=""
@@ -170,7 +246,16 @@ ENVEOF
 else
     sed -i.bak "s|^DATABASE_URL=.*|DATABASE_URL=\"${DATABASE_URL}\"|" .env.local
     rm -f .env.local.bak
-    echo " OK: .env.local exists — DATABASE_URL updated"
+    # Update LDAP vars if user configured them
+    if [ -n "$LDAP_URI" ]; then
+        sed -i.bak "s|^LDAP_URI=.*|LDAP_URI=\"${LDAP_URI}\"|" .env.local
+        sed -i.bak "s|^LDAP_BASE_DN=.*|LDAP_BASE_DN=\"${LDAP_BASE_DN}\"|" .env.local
+        sed -i.bak "s|^LDAP_BIND_DN=.*|LDAP_BIND_DN=\"${LDAP_BIND_DN}\"|" .env.local
+        sed -i.bak "s|^LDAP_BIND_PASSWORD=.*|LDAP_BIND_PASSWORD=\"${LDAP_BIND_PASSWORD}\"|" .env.local
+        sed -i.bak "s|^LDAP_USER_FILTER=.*|LDAP_USER_FILTER=\"${LDAP_USER_FILTER}\"|" .env.local
+        rm -f .env.local.bak
+    fi
+    echo " OK: .env.local exists — updated"
 fi
 
 # ── 5. Database setup ─────────────────────────────────────────────────────────
@@ -206,7 +291,7 @@ echo " ║               Setup Complete!                    ║"
 echo " ╠══════════════════════════════════════════════════╣"
 echo " ║                                                  ║"
 echo " ║  Default credentials:                            ║"
-echo " ║    Email:    admin@kanboard.local                ║"
+echo " ║    Email:    admin@boardly.local                 ║"
 echo " ║    Password: admin123                            ║"
 echo " ║                                                  ║"
 echo " ║  Start the server:                               ║"
