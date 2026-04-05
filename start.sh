@@ -4,7 +4,7 @@ set -e
 MODE="${1:-dev}"
 
 echo ""
-echo " KanBoard — starting server (${MODE} mode)..."
+echo " Boardly — starting server (${MODE} mode)..."
 echo ""
 
 # Verify prerequisites

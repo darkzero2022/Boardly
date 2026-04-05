@@ -132,7 +132,7 @@ export function NotificationSettings({
         <div className="divide-y divide-border">
           <Toggle
             label="In-app notifications"
-            description="Bell icon inside KanBoard"
+            description="Bell icon inside Boardly"
             checked={user.inApp}
             disabled={!global.allowInApp}
             onChange={(v) => setUser((u) => ({ ...u, inApp: v }))}

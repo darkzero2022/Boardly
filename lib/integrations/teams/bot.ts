@@ -76,7 +76,7 @@ export async function handleBotActivity(
       return {
         type: "message",
         text: [
-          "**KanBoard Bot Commands:**",
+          "**Boardly Bot Commands:**",
           "• `status <taskId>` — Get task status",
           "• `assign <taskId> <username>` — Assign a task",
           "• `help` — Show this message",

@@ -2,7 +2,7 @@
 setlocal
 
 echo.
-echo  KanBoard — starting dev server...
+echo  Boardly — starting dev server...
 echo.
 
 :: Verify .env.local exists

@@ -27,7 +27,7 @@ export async function sendTeamsNotification(
           potentialAction: [
             {
               "@type": "OpenUri",
-              name: "View in KanBoard",
+              name: "View in Boardly",
               targets: [{ os: "default", uri: card.link }],
             },
           ],

@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 
 echo.
 echo  +==================================================+
-echo  ^|         KanBoard Setup ^— v3.0                   ^|
+echo  ^|           Boardly Setup ^— v3.0                  ^|
 echo  ^|   Self-hosted Team Task Management               ^|
 echo  +==================================================+
 echo.
@@ -108,6 +108,70 @@ if not "!DB_PROVIDER!"=="sqlite" (
     echo  OK: prisma\schema.prisma updated
 )
 
+:: ── 3b. LDAP / Active Directory ───────────────────────────────────────────────
+echo.
+echo  +==================================================+
+echo  ^|       LDAP / Active Directory Auth              ^|
+echo  +==================================================+
+echo  ^|  Enable if you have an on-premise AD / LDAP      ^|
+echo  ^|  server. Leave blank to use local accounts only. ^|
+echo  +==================================================+
+echo.
+set /p LDAP_ENABLE=" Enable LDAP authentication? [y/N]: "
+if "!LDAP_ENABLE!"=="" set LDAP_ENABLE=N
+
+set LDAP_URI=
+set LDAP_BASE_DN=
+set LDAP_BIND_DN=
+set LDAP_BIND_PASSWORD=
+set LDAP_USER_FILTER=(^|^(sAMAccountName={{username}}^)^(uid={{username}}^)^(userPrincipalName={{username}}^)^)
+set LDAP_TLS_REJECT_UNAUTHORIZED=true
+
+if /i "!LDAP_ENABLE!"=="y" (
+    echo.
+    echo  LDAP URI examples:
+    echo    Active Directory:  ldap://dc.company.com:389
+    echo    OpenLDAP:          ldap://ldap.company.com:389
+    echo    LDAPS ^(TLS^):       ldaps://dc.company.com:636
+    echo.
+    set /p LDAP_URI=" LDAP server URI ^(e.g. ldap://dc.company.com:389^): "
+    if "!LDAP_URI!"=="" (
+        echo  LDAP URI cannot be empty -- skipping LDAP setup.
+        set LDAP_URI=
+    ) else (
+        echo.
+        echo  Base DN examples:
+        echo    dc=company,dc=com
+        echo    dc=corp,dc=example,dc=org
+        echo.
+        set /p LDAP_BASE_DN=" Base DN ^(e.g. dc=company,dc=com^): "
+        if "!LDAP_BASE_DN!"=="" (
+            echo  Base DN cannot be empty -- skipping LDAP setup.
+            set LDAP_URI=
+        ) else (
+            echo.
+            echo  Service account ^(optional -- for servers that require auth to search^):
+            set /p LDAP_BIND_DN=" Bind DN ^(leave blank for anonymous bind^): "
+            if not "!LDAP_BIND_DN!"=="" (
+                set /p LDAP_BIND_PASSWORD=" Bind password: "
+            )
+            echo.
+            echo  User filter -- {{username}} is replaced with the entered login.
+            echo    Default covers AD sAMAccountName, uid, and userPrincipalName.
+            set /p LDAP_USER_FILTER_INPUT=" User filter ^[press Enter for default^]: "
+            if not "!LDAP_USER_FILTER_INPUT!"=="" (
+                set LDAP_USER_FILTER=!LDAP_USER_FILTER_INPUT!
+            )
+            echo.
+            set /p TLS_REJECT=" Reject unauthorized TLS certificates? [Y/n]: "
+            if /i "!TLS_REJECT!"=="n" set LDAP_TLS_REJECT_UNAUTHORIZED=false
+            echo  OK: LDAP configured
+        )
+    )
+) else (
+    echo  OK: LDAP disabled -- users will authenticate with local accounts
+)
+
 :: ── 4. Set up .env.local ──────────────────────────────────────────────────────
 echo.
 echo [4/6] Setting up environment file...
@@ -135,6 +199,14 @@ if not exist ".env.local" (
         echo NEXTAUTH_SECRET="!SECRET!"
         echo NEXTAUTH_URL="http://!LAN_IP!:3000"
         echo.
+        echo # -- LDAP / Active Directory -- leave blank to disable ------------------------
+        echo LDAP_URI="!LDAP_URI!"
+        echo LDAP_BASE_DN="!LDAP_BASE_DN!"
+        echo LDAP_BIND_DN="!LDAP_BIND_DN!"
+        echo LDAP_BIND_PASSWORD="!LDAP_BIND_PASSWORD!"
+        echo LDAP_USER_FILTER="!LDAP_USER_FILTER!"
+        echo LDAP_TLS_REJECT_UNAUTHORIZED="!LDAP_TLS_REJECT_UNAUTHORIZED!"
+        echo.
         echo # -- Microsoft Azure AD ^(SSO^) -- leave blank to disable -----------------------
         echo AZURE_AD_CLIENT_ID=""
         echo AZURE_AD_CLIENT_SECRET=""
@@ -145,12 +217,12 @@ if not exist ".env.local" (
         echo SMTP_PORT="587"
         echo SMTP_USER=""
         echo SMTP_PASS=""
-        echo SMTP_FROM="KanBoard ^<noreply@kanboard.local^>"
+        echo SMTP_FROM="Boardly ^<noreply@boardly.local^>"
         echo.
         echo # -- Browser Push Notifications -- leave blank to disable ---------------------
         echo VAPID_PUBLIC_KEY=""
         echo VAPID_PRIVATE_KEY=""
-        echo VAPID_SUBJECT="mailto:admin@kanboard.local"
+        echo VAPID_SUBJECT="mailto:admin@boardly.local"
         echo.
         echo # -- Microsoft Teams -- leave blank to disable --------------------------------
         echo TEAMS_WEBHOOK_URL=""
@@ -166,7 +238,14 @@ if not exist ".env.local" (
     echo  OK: .env.local created
 ) else (
     powershell -Command "(Get-Content .env.local) -replace '^DATABASE_URL=.*', 'DATABASE_URL=\"!DATABASE_URL!\"' | Set-Content .env.local"
-    echo  OK: .env.local exists -- DATABASE_URL updated
+    if not "!LDAP_URI!"=="" (
+        powershell -Command "(Get-Content .env.local) -replace '^LDAP_URI=.*', 'LDAP_URI=\"!LDAP_URI!\"' | Set-Content .env.local"
+        powershell -Command "(Get-Content .env.local) -replace '^LDAP_BASE_DN=.*', 'LDAP_BASE_DN=\"!LDAP_BASE_DN!\"' | Set-Content .env.local"
+        powershell -Command "(Get-Content .env.local) -replace '^LDAP_BIND_DN=.*', 'LDAP_BIND_DN=\"!LDAP_BIND_DN!\"' | Set-Content .env.local"
+        powershell -Command "(Get-Content .env.local) -replace '^LDAP_BIND_PASSWORD=.*', 'LDAP_BIND_PASSWORD=\"!LDAP_BIND_PASSWORD!\"' | Set-Content .env.local"
+        powershell -Command "(Get-Content .env.local) -replace '^LDAP_USER_FILTER=.*', 'LDAP_USER_FILTER=\"!LDAP_USER_FILTER!\"' | Set-Content .env.local"
+    )
+    echo  OK: .env.local exists -- updated
 )
 
 :: ── 5. Database setup ─────────────────────────────────────────────────────────
@@ -201,7 +280,7 @@ echo  ^|              Setup Complete!                     ^|
 echo  +==================================================+
 echo  ^|                                                  ^|
 echo  ^|  Default credentials:                            ^|
-echo  ^|    Email:    admin@kanboard.local                ^|
+echo  ^|    Email:    admin@boardly.local                  ^|
 echo  ^|    Password: admin123                            ^|
 echo  ^|                                                  ^|
 echo  ^|  Start the server:                               ^|

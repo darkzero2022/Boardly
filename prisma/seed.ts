@@ -55,10 +55,10 @@ async function main() {
   // Admin user
   const adminPassword = await bcrypt.hash("admin123", 12);
   const admin = await prisma.user.upsert({
-    where: { email: "admin@kanboard.local" },
+    where: { email: "admin@boardly.local" },
     create: {
       name: "Admin",
-      email: "admin@kanboard.local",
+      email: "admin@boardly.local",
       passwordHash: adminPassword,
       role: "ADMIN",
       teamId: team.id,
@@ -69,10 +69,10 @@ async function main() {
   // Demo manager
   const managerPassword = await bcrypt.hash("manager123", 12);
   const manager = await prisma.user.upsert({
-    where: { email: "manager@kanboard.local" },
+    where: { email: "manager@boardly.local" },
     create: {
       name: "Alice Manager",
-      email: "manager@kanboard.local",
+      email: "manager@boardly.local",
       passwordHash: managerPassword,
       role: "MANAGER",
       teamId: team.id,
@@ -83,10 +83,10 @@ async function main() {
   // Demo member
   const memberPassword = await bcrypt.hash("member123", 12);
   const member = await prisma.user.upsert({
-    where: { email: "member@kanboard.local" },
+    where: { email: "member@boardly.local" },
     create: {
       name: "Bob Member",
-      email: "member@kanboard.local",
+      email: "member@boardly.local",
       passwordHash: memberPassword,
       role: "MEMBER",
       teamId: team.id,
@@ -230,9 +230,9 @@ async function main() {
 
   console.log("\n✅ Database seeded successfully!");
   console.log("\nDefault accounts:");
-  console.log("  Admin:   admin@kanboard.local   / admin123");
-  console.log("  Manager: manager@kanboard.local / manager123");
-  console.log("  Member:  member@kanboard.local  / member123");
+  console.log("  Admin:   admin@boardly.local   / admin123");
+  console.log("  Manager: manager@boardly.local / manager123");
+  console.log("  Member:  member@boardly.local  / member123");
   console.log("\nAccess at: http://localhost:3000\n");
 }
 
