@@ -1,112 +1,102 @@
-# Boardly — Self-Hosted Team Task Management
+<div align="center">
 
-> A full-featured, self-hosted Kanban application for teams of 16–500 users. Built like Asana — drag-and-drop boards, SLA tracking, time tracking, swimlanes, Microsoft 365 integration, real-time collaboration, and role-based access. No cloud dependency required. Runs on your own server or LAN.
+# Boardly
+
+**Self-hosted team task management — built for your LAN, not the cloud**
+
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma)](https://prisma.io)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+A full-featured Kanban application for teams of 16–500 users. Drag-and-drop boards, SLA tracking, swimlanes, time tracking, real-time collaboration, and Microsoft 365 integration — all running on your own server with zero cloud dependency.
+
+[Quick Start](#quick-start) · [Database Options](#database-options) · [Configuration](#environment-variables) · [Deployment](#production-deployment) · [Roles](#roles)
+
+</div>
 
 ---
 
-## Feature Overview
+## Features
 
-### Core Kanban
+### Kanban Boards
 | Feature | Description |
 |---|---|
-| Drag-and-drop boards | Smooth DnD via @dnd-kit — reorder tasks and move between columns |
+| Drag-and-drop | Smooth DnD via `@dnd-kit` — reorder tasks and move between columns |
 | Multiple workspaces | Organize boards by team, project, or department |
-| Column management | Create, rename, reorder columns. Set WIP limits with visual warnings |
-| Task detail drawer | Full task panel — description, assignee, labels, due date, subtasks, comments, history |
-| Subtasks | Nested task hierarchy with independent SLA tracking |
-| Labels | Color-coded labels, multi-select per task |
-| Assignees & reporters | Assign tasks to users, track who reported |
-| Due dates | Per-task deadlines with calendar picker |
-| Recurring tasks | Daily / weekly / monthly auto-clone via scheduled cron |
-| Task dependencies | Blocks / blocked-by relationships with circular dependency detection |
-| Task cloning | Duplicate any task with one click |
-| File attachments | Upload files per task, stored on server disk |
+| Column management | Create, rename (double-click), reorder, and color columns |
+| WIP limits | Max task count per column — orange warning at 80%, red at 100% |
+| Inline column rename | Double-click any column header (Admin/Manager) |
 
 ### Views
 | View | Description |
 |---|---|
-| Kanban | Classic column-based board with drag-and-drop |
-| Calendar | Monthly calendar showing tasks by due date |
-| Swimlanes | Group tasks within columns by Assignee, Priority, or Label |
+| **Kanban** | Classic column board with real-time drag-and-drop |
+| **Calendar** | Monthly calendar showing tasks by due date, color-coded by priority |
+| **Swimlanes** | Group tasks within columns by Assignee, Priority, or Label |
+
+### Task Management
+| Feature | Description |
+|---|---|
+| Rich task drawer | Description, assignee, labels, due date, priority, subtasks, comments, full history |
+| Subtasks | Nested hierarchy with independent tracking |
+| Labels | Color-coded labels, multiple per task |
+| Task dependencies | Blocks / blocked-by relationships with circular dependency detection |
+| Task cloning | Duplicate any task with one click |
+| File attachments | Upload files per task, stored on server disk |
+| Task watchers | Watch any task to receive all its notifications |
+| Time tracking | Log minutes with notes per task; total displayed in drawer tab |
+| Recurring tasks | Auto-clone daily / weekly / monthly via scheduled cron |
 
 ### Productivity
 | Feature | Description |
 |---|---|
-| Global search | Instant search across tasks, comments, and boards |
-| Bulk operations | Multi-select tasks → move column, reassign, add/remove label, delete |
-| Keyboard shortcuts | `?` overlay: `B` bulk, `1/2` views, `Escape` close |
-| Task templates | Save reusable task structures, insert from New Task dialog |
-| Board templates | Save any board (columns + SLA) as a template, create new boards from it |
-| Task watchers | Watch/unwatch tasks, receive notifications on activity |
-| Time tracking | Log minutes per task with notes, total shown in task drawer |
+| Global search | Instant search across tasks, comments, and boards with debounced popover |
+| Bulk operations | Multi-select tasks → move column, reassign, add label, or delete |
+| Keyboard shortcuts | `?` overlay — `N` new task, `B` bulk, `1/2` switch views, `Esc` close |
+| Board templates | Save any board as a template (columns + SLA policy), create new boards from it |
+| Task templates | Reusable task starters insertable from the New Task dialog |
+| My Dashboard | Personal view — stats, my tasks by priority, @mentions, activity feed |
 
-### Automation & SLA
+### SLA & Automation
 | Feature | Description |
 |---|---|
-| SLA engine | Per-board SLA policies (Critical/High/Medium/Low hours). Tasks auto-assigned deadlines |
-| SLA escalation | Breach escalation with configurable steps |
-| Recurring scheduler | Hourly cron — clones recurring tasks on schedule |
-| Audit trail | Full history of every change on every task |
+| SLA engine | Per-board policies (hours by priority). Tasks get auto-calculated deadlines |
+| SLA escalation | Configurable escalation steps — assignee → manager → admin |
+| Audit trail | Full history of every field change on every task |
+| Recurring scheduler | Hourly cron clones recurring tasks on schedule |
 
 ### Collaboration
 | Feature | Description |
 |---|---|
-| Real-time updates | Socket.io — task moves and updates appear instantly on all connected browsers |
-| Comments | Threaded comments with @mention support |
-| @Mentions | Notify users by name in comments |
-| My Dashboard | Personal view — stats, my tasks, @mentions, activity feed |
-| Notifications | In-app notification center (bell), email (SMTP), browser push |
+| Real-time updates | Socket.io — moves, new tasks, and comments appear instantly on all connected browsers |
+| Comments & @mentions | Threaded comments; @mention a user to notify them |
+| Notifications | In-app bell, email (SMTP), browser push (VAPID) |
+
+### Authentication
+| Method | Description |
+|---|---|
+| Local accounts | Email + bcrypt password. Admin controls who can register |
+| LDAP / Active Directory | Corporate directory login — AD, OpenLDAP, FreeIPA. Auto-provisions users on first login |
+| Microsoft SSO | Azure AD / Entra ID OAuth. Admin can enable/disable per provider |
 
 ### Microsoft 365 Integration
 | Feature | Description |
 |---|---|
-| Microsoft SSO | Azure AD / Entra ID sign-in |
-| Teams webhooks | Post task events to Teams channels |
-| Planner sync | Two-way sync with Microsoft Planner via Graph API |
+| Teams webhooks | Post task events to Teams channels via Incoming Webhook |
+| Teams bot | `create task`, `assign`, `status [id]` commands |
+| Teams tab | Embed any board as a Teams tab |
+| Planner two-way sync | Sync tasks with Microsoft Planner via Graph API |
 
-### Admin & Security
+### Admin & Reporting
 | Feature | Description |
 |---|---|
-| Role-based access | ADMIN / MANAGER / MEMBER roles |
-| Board embed | Embed any board as an iframe for dashboards |
+| Role-based access | ADMIN / MANAGER / MEMBER with per-board overrides |
+| Reports | Workload distribution, SLA compliance, burndown charts |
+| CSV / Excel export | Export any report |
 | Dark mode | Full dark theme, persisted per user |
-| Reports | Task completion, SLA breach, workload, burndown charts |
-
----
-
-## Screenshots
-
-### Login
-![Login](docs/screenshots/login.png)
-Local credentials or Microsoft SSO. Admin controls which methods are enabled.
-
-### My Dashboard
-![Dashboard](docs/screenshots/dashboard.png)
-Personal overview: stats row, my tasks by priority, @mentions, activity feed.
-
-### Kanban Board
-![Board](docs/screenshots/board.png)
-Drag-and-drop columns with WIP limit badges. Real-time across all connected users.
-
-### Swimlane View
-![Swimlanes](docs/screenshots/swimlanes.png)
-Group tasks by Assignee, Priority, or Label across all columns.
-
-### Calendar View
-![Calendar](docs/screenshots/calendar.png)
-Monthly calendar of tasks with due dates. Color-coded by priority.
-
-### Task Detail Drawer
-![Task Detail](docs/screenshots/task-detail.png)
-Full task panel with tabs: Details, Comments, Subtasks, Attachments, Time, History.
-
-### Time Tracking
-![Time Tracking](docs/screenshots/time-tracking.png)
-Log time per task with notes. Total displayed in tab header.
-
-### Reports
-![Reports](docs/screenshots/reports.png)
-SLA breach rates, workload distribution, task completion trends.
+| Board embed | Embed any board as an iframe |
 
 ---
 
@@ -114,24 +104,22 @@ SLA breach rates, workload distribution, task completion trends.
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 14 (App Router) |
-| Language | TypeScript |
-| Styling | Tailwind CSS + shadcn/ui |
-| Database | SQLite (default) / PostgreSQL / MySQL |
-| ORM | Prisma |
-| Auth | NextAuth v5 (credentials + Azure AD) |
-| Real-time | Socket.io (attached to same HTTP server) |
-| Drag & Drop | @dnd-kit/core + @dnd-kit/sortable |
-| Scheduling | node-cron |
-| Server | Custom tsx server (server.ts) |
+| Framework | [Next.js 14](https://nextjs.org) (App Router) |
+| Language | TypeScript 5 |
+| Styling | Tailwind CSS + [shadcn/ui](https://ui.shadcn.com) |
+| Database | SQLite · PostgreSQL · MySQL (via Prisma) |
+| ORM | [Prisma](https://prisma.io) |
+| Auth | [NextAuth v5](https://authjs.dev) — credentials + LDAP + Azure AD |
+| Real-time | [Socket.io](https://socket.io) |
+| Drag & Drop | [@dnd-kit](https://dndkit.com) |
+| Scheduling | [node-cron](https://github.com/node-cron/node-cron) |
+| Email | [Nodemailer](https://nodemailer.com) |
 
 ---
 
 ## Quick Start
 
-### Prerequisites
-- Node.js 18+
-- Git
+**Prerequisites:** Node.js 18+, Git
 
 ### Windows
 ```bat
@@ -154,114 +142,135 @@ The setup script will:
 1. Check Node.js version
 2. Install all dependencies
 3. **Ask you to choose a database** (SQLite / PostgreSQL / MySQL)
-4. Generate `.env.local` with a random auth secret and your LAN IP
-5. Run database migrations
-6. Seed the admin account and sample workspace
+4. **Ask whether to enable LDAP** (optional — for on-premise AD/LDAP)
+5. Generate `.env.local` with a random auth secret and your LAN IP
+6. Run database migrations and seed the admin account
 
-**Default credentials after setup:**
+**Default login after setup:**
 ```
 Email:    admin@boardly.local
 Password: admin123
 ```
 
+> Change the admin password immediately after first login.
+
 ---
 
 ## Database Options
 
-The setup script asks you to choose. See **[docs/database-setup.md](docs/database-setup.md)** for full details.
+The setup script walks you through this interactively. See **[docs/database-setup.md](docs/database-setup.md)** for full details including connection pooling, backups, HA, and migrating SQLite → PostgreSQL.
 
-### 1. SQLite (default — zero config)
-```env
-DATABASE_URL="file:./kanboard.db"
-```
-Best for: ≤ 30 users, single server, quick deployments. No database server needed.
+| Database | Best for | Example connection string |
+|---|---|---|
+| **SQLite** (default) | ≤ 30 users, single server, zero config | `file:./boardly.db` |
+| **PostgreSQL** | 30–500+ users, HA, cloud | `postgresql://user:pass@host:5432/boardly` |
+| **MySQL / MariaDB** | Existing MySQL infrastructure | `mysql://user:pass@host:3306/boardly` |
 
-### 2. PostgreSQL (recommended for enterprise)
-```env
-DATABASE_URL="postgresql://kanboard:password@localhost:5432/kanboard"
-```
-Best for: 30–500+ users, high availability, managed cloud. Supports Supabase, Neon, Railway, AWS RDS.
-
-### 3. MySQL / MariaDB
-```env
-DATABASE_URL="mysql://kanboard:password@localhost:3306/kanboard"
-```
-Best for: Teams that already run MySQL infrastructure. Supports PlanetScale, Railway, AWS RDS.
-
-> For managed cloud options, connection pooling, backups, and migrating from SQLite → PostgreSQL, see [docs/database-setup.md](docs/database-setup.md).
+Managed cloud options: Supabase, Neon, Railway, AWS RDS, PlanetScale.
 
 ---
 
 ## Environment Variables
 
-All variables are documented in [`.env.local.example`](.env.local.example). The setup script generates `.env.local` automatically.
+Copy `.env.local.example` to `.env.local` and fill in your values, or let `setup.sh` / `setup.bat` generate it automatically.
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | Yes | Database connection string |
-| `AUTH_SECRET` | Yes | NextAuth secret (auto-generated by setup) |
-| `AUTH_URL` | Yes | App URL (auto-detected by setup) |
-| `AZURE_AD_CLIENT_ID` | No | Microsoft SSO — leave blank to disable |
-| `AZURE_AD_CLIENT_SECRET` | No | Microsoft SSO |
-| `AZURE_AD_TENANT_ID` | No | Microsoft SSO |
-| `SMTP_HOST` | No | Email notifications — leave blank to disable |
-| `SMTP_PORT` | No | Default: 587 |
-| `SMTP_USER` | No | SMTP username |
-| `SMTP_PASS` | No | SMTP password |
-| `VAPID_PUBLIC_KEY` | No | Browser push — generate with `npx web-push generate-vapid-keys` |
-| `VAPID_PRIVATE_KEY` | No | Browser push |
-| `TEAMS_WEBHOOK_URL` | No | MS Teams notifications — leave blank to disable |
-| `GRAPH_CLIENT_ID` | No | MS Planner sync — leave blank to disable |
-| `GRAPH_CLIENT_SECRET` | No | MS Planner sync |
-| `GRAPH_TENANT_ID` | No | MS Planner sync |
-| `PORT` | No | Server port. Default: 3000 |
+### Required
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | Database connection string |
+| `AUTH_SECRET` | Random secret for NextAuth (auto-generated by setup) |
+| `AUTH_URL` | Full URL of the app, e.g. `http://192.168.1.10:3000` |
+
+### LDAP / Active Directory
+| Variable | Description |
+|---|---|
+| `LDAP_URI` | LDAP server URI, e.g. `ldap://dc.company.com:389`. Leave blank to disable |
+| `LDAP_BASE_DN` | Base DN, e.g. `dc=company,dc=com` |
+| `LDAP_BIND_DN` | Service account DN for searching (leave blank for anonymous bind) |
+| `LDAP_BIND_PASSWORD` | Service account password |
+| `LDAP_USER_FILTER` | Search filter. Default covers `sAMAccountName`, `uid`, `userPrincipalName` |
+| `LDAP_TLS_REJECT_UNAUTHORIZED` | Set to `false` for self-signed certs. Default: `true` |
+
+### Microsoft SSO
+| Variable | Description |
+|---|---|
+| `AZURE_AD_CLIENT_ID` | Azure App Registration client ID. Leave blank to disable |
+| `AZURE_AD_CLIENT_SECRET` | Client secret |
+| `AZURE_AD_TENANT_ID` | Directory (tenant) ID |
+
+### Notifications
+| Variable | Description |
+|---|---|
+| `SMTP_HOST` | SMTP server hostname. Leave blank to disable email |
+| `SMTP_PORT` | Default: `587` |
+| `SMTP_USER` / `SMTP_PASS` | SMTP credentials |
+| `SMTP_FROM` | From address, e.g. `Boardly <noreply@boardly.local>` |
+| `VAPID_PUBLIC_KEY` | Browser push public key — generate with `npx web-push generate-vapid-keys` |
+| `VAPID_PRIVATE_KEY` | Browser push private key |
+
+### Microsoft 365 Integration
+| Variable | Description |
+|---|---|
+| `TEAMS_WEBHOOK_URL` | Teams Incoming Webhook URL. Leave blank to disable |
+| `GRAPH_CLIENT_ID` | MS Graph app ID for Planner sync |
+| `GRAPH_CLIENT_SECRET` | MS Graph client secret |
+| `GRAPH_TENANT_ID` | MS Graph tenant ID |
 
 ---
 
-## Start Scripts
+## Microsoft SSO Setup
 
-### Development (hot reload)
-```bash
-# Linux/Mac
-./start.sh
-
-# Windows
-start.bat
-```
-
-### Production (optimized build)
-```bash
-# Linux/Mac
-./start.sh prod
-
-# Windows
-start.bat prod
-```
-
----
-
-## Microsoft SSO Configuration
-
-1. Go to [Azure Portal](https://portal.azure.com) → Azure Active Directory → App registrations → New registration
-2. Name: `Boardly`, Supported account types: your tenant
+1. [Azure Portal](https://portal.azure.com) → Azure Active Directory → App registrations → **New registration**
+2. Name: `Boardly` — Supported account types: your tenant
 3. Redirect URI: `http://YOUR_SERVER_IP:3000/api/auth/callback/azure-ad`
-4. After creation: note the **Application (client) ID** and **Directory (tenant) ID**
-5. Go to **Certificates & secrets** → New client secret → copy the value
-6. Set in `.env.local`:
+4. Note the **Application (client) ID** and **Directory (tenant) ID**
+5. **Certificates & secrets** → New client secret → copy the value
+6. Add to `.env.local`:
    ```env
    AZURE_AD_CLIENT_ID="your-client-id"
    AZURE_AD_CLIENT_SECRET="your-client-secret"
    AZURE_AD_TENANT_ID="your-tenant-id"
    ```
-7. Restart the server
+
+---
+
+## LDAP / Active Directory Setup
+
+The setup script will ask about LDAP interactively. To configure manually:
+
+**Active Directory:**
+```env
+LDAP_URI="ldap://dc.company.com:389"
+LDAP_BASE_DN="dc=company,dc=com"
+LDAP_BIND_DN="cn=boardly-svc,ou=Service Accounts,dc=company,dc=com"
+LDAP_BIND_PASSWORD="service-account-password"
+LDAP_USER_FILTER="(sAMAccountName={{username}})"
+```
+
+**OpenLDAP / FreeIPA:**
+```env
+LDAP_URI="ldap://ldap.company.com:389"
+LDAP_BASE_DN="dc=company,dc=com"
+LDAP_BIND_DN="cn=admin,dc=company,dc=com"
+LDAP_BIND_PASSWORD="admin-password"
+LDAP_USER_FILTER="(uid={{username}})"
+```
+
+**LDAPS (TLS):**
+```env
+LDAP_URI="ldaps://dc.company.com:636"
+LDAP_TLS_REJECT_UNAUTHORIZED="true"
+```
+
+Users who log in via LDAP are auto-provisioned with the `MEMBER` role on first login. Admins can promote them in **Settings → Users**.
 
 ---
 
 ## Microsoft Teams Integration
 
-1. In Teams, go to the channel → ⋯ → Connectors → Incoming Webhook
-2. Create webhook, copy the URL
-3. Set in `.env.local`:
+1. In Teams, go to the channel → **⋯ → Connectors → Incoming Webhook**
+2. Create the webhook and copy the URL
+3. Add to `.env.local`:
    ```env
    TEAMS_WEBHOOK_URL="https://xxx.webhook.office.com/webhookb2/..."
    ```
@@ -269,19 +278,28 @@ start.bat prod
 
 ---
 
+## Start Scripts
+
+| Command | Description |
+|---|---|
+| `./start.sh` or `start.bat` | Development server with hot reload |
+| `./start.sh prod` or `start.bat prod` | Production build + start |
+
+---
+
 ## Production Deployment
 
-### Nginx reverse proxy (recommended)
+### Nginx reverse proxy
 ```nginx
 server {
     listen 80;
-    server_name kanboard.yourcompany.com;
+    server_name boardly.yourcompany.com;
 
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_cache_bypass $http_upgrade;
@@ -292,7 +310,7 @@ server {
 ### PM2 (process manager)
 ```bash
 npm install -g pm2
-pm2 start "npx tsx server.ts" --name kanboard
+pm2 start "npx tsx server.ts" --name boardly
 pm2 save
 pm2 startup
 ```
@@ -309,13 +327,13 @@ CMD ["npx", "tsx", "server.ts"]
 ```
 
 ```bash
-docker build -t kanboard .
+docker build -t boardly .
 docker run -d \
   -p 3000:3000 \
-  -v $(pwd)/kanboard.db:/app/kanboard.db \
+  -v $(pwd)/boardly.db:/app/boardly.db \
   -v $(pwd)/.env.local:/app/.env.local \
-  --name kanboard \
-  kanboard
+  --name boardly \
+  boardly
 ```
 
 ---
@@ -324,45 +342,9 @@ docker run -d \
 
 | Role | Boards | Tasks | Settings | Users |
 |---|---|---|---|---|
-| **ADMIN** | Full access | Full access | All settings | Create/edit/delete |
+| **ADMIN** | Full access | Full access | All settings | Create / edit / delete |
 | **MANAGER** | Create & manage | Full access | Board settings | View |
-| **MEMBER** | View & work | Create/edit assigned | — | View |
-
----
-
-## Troubleshooting
-
-### "Database is locked" (SQLite)
-Multiple Node processes are holding the database. Kill them all and restart:
-```bash
-# Windows
-taskkill /F /IM node.exe
-
-# Linux/Mac
-pkill -f "tsx server.ts"
-```
-
-### Auth routes returning 404
-The Next.js build cache may be stale:
-```bash
-rm -rf .next
-./start.sh
-```
-
-### Socket.io not connecting
-Ensure you're accessing the app via the server's IP/hostname, not `localhost` from another machine. Check `AUTH_URL` in `.env.local` matches the actual URL.
-
-### "Cannot find module '@prisma/client'"
-Run `npx prisma generate` after any schema changes.
-
-### Forgot admin password
-```bash
-# Reset via Prisma Studio
-npx prisma studio
-# Navigate to User → find admin → edit passwordHash field
-# Or re-seed (WARNING: deletes all data)
-npx tsx prisma/seed.ts
-```
+| **MEMBER** | View & work | Create / edit assigned | — | View |
 
 ---
 
@@ -370,74 +352,116 @@ npx tsx prisma/seed.ts
 
 ```
 Boardly/
-├── app/                    # Next.js App Router pages & API routes
-│   ├── (dashboard)/        # Authenticated pages (board, workspace, reports…)
-│   ├── api/                # REST API routes
-│   └── login/              # Auth pages
-├── components/             # React components
-│   ├── kanban/             # Board, columns, cards, drawer, calendar, swimlanes
-│   ├── dashboard/          # Dashboard widgets
-│   ├── board-templates/    # Board template dialogs
-│   ├── task-templates/     # Task template picker
-│   └── ui/                 # shadcn/ui base components
-├── lib/                    # Server-side utilities
-│   ├── auth.ts             # NextAuth configuration
-│   ├── db.ts               # Prisma client singleton
-│   ├── sla/                # SLA engine
-│   ├── notifications/      # Notification dispatcher
-│   ├── recurring/          # Recurring task scheduler
-│   └── integrations/       # Teams, Planner, SMTP
+├── app/
+│   ├── (auth)/login/           # Login page (local, LDAP, Microsoft SSO)
+│   ├── (dashboard)/            # Authenticated pages
+│   │   ├── page.tsx            # My Dashboard
+│   │   ├── boards/[id]/        # Kanban board (kanban, calendar, swimlane views)
+│   │   ├── workspaces/[id]/    # Workspace overview
+│   │   ├── reports/            # Analytics & reports
+│   │   └── settings/           # Users, teams, SLA, notifications, integrations
+│   └── api/                    # REST API routes
+├── components/
+│   ├── kanban/                 # Board, columns, cards, drawer, calendar, swimlanes
+│   ├── dashboard/              # Dashboard widgets
+│   ├── board-templates/        # Board template dialogs
+│   ├── task-templates/         # Task template picker
+│   └── ui/                     # shadcn/ui base components
+├── lib/
+│   ├── auth.ts                 # NextAuth configuration
+│   ├── auth/ldap.ts            # LDAP authentication module
+│   ├── db.ts                   # Prisma client singleton
+│   ├── sla/                    # SLA engine and escalation
+│   ├── notifications/          # Email, push, in-app dispatcher
+│   ├── recurring/              # Recurring task scheduler
+│   └── integrations/           # Teams, Planner, SMTP
 ├── prisma/
-│   ├── schema.prisma       # Database schema
-│   ├── migrations/         # Migration history
-│   └── seed.ts             # Initial data seed
+│   ├── schema.prisma           # Database schema
+│   ├── migrations/             # SQLite migration history
+│   └── seed.ts                 # Initial data (admin user, sample workspace)
 ├── docs/
-│   └── database-setup.md   # Enterprise database guide
-├── server.ts               # Custom HTTP server (Next.js + Socket.io)
-├── setup.sh / setup.bat    # One-command setup scripts
-├── start.sh / start.bat    # Start scripts (dev + prod)
-└── .env.local.example      # Environment variable template
+│   └── database-setup.md       # Enterprise database guide
+├── server.ts                   # Custom HTTP server (Next.js + Socket.io + cron)
+├── setup.sh / setup.bat        # Interactive setup scripts
+├── start.sh / start.bat        # Dev and production start scripts
+└── .env.local.example          # Environment variable reference
+```
+
+---
+
+## Troubleshooting
+
+**Database is locked (SQLite)**
+Multiple Node processes hold the file. Kill them all and restart:
+```bash
+# Linux/macOS
+pkill -f "tsx server.ts"
+
+# Windows
+taskkill /F /IM node.exe
+```
+
+**Auth routes returning 404**
+```bash
+rm -rf .next
+./start.sh
+```
+
+**Socket.io not connecting from another machine**
+Ensure `AUTH_URL` in `.env.local` is set to the server LAN IP, not `localhost`.
+
+**Cannot find module @prisma/client**
+```bash
+npx prisma generate
+```
+
+**Forgot admin password**
+```bash
+npx prisma studio
+# Navigate to User → find admin → edit passwordHash
 ```
 
 ---
 
 ## Changelog
 
-### v3.0 (Sprint 3)
-- WIP limits on columns with orange/red visual warnings
+### v3.0
+- LDAP / Active Directory authentication with auto-provisioning
+- WIP limits on columns (orange at 80%, red at 100%)
 - Swimlane view — group by Assignee, Priority, or Label
 - Keyboard shortcuts overlay (`?`)
-- Time tracking — log minutes per task, total in tab
+- Time tracking — log minutes per task with notes
 - Board templates — save and create boards from templates
-- Task templates — reusable task starters in New Task dialog
-- Dropdown menu component (Radix UI)
+- Task templates — reusable task starters
+- Inline column rename (double-click, Admin/Manager only)
+- Boardly rebrand
 
-### v2.0 (Sprint 2)
-- Global search (tasks, comments, boards) with debounced popover
+### v2.0
+- Global search across tasks, comments, and boards
 - My Dashboard — stats, my tasks, @mentions, activity feed
-- Task dependencies — blocks/blocked-by with circular detection
-- Bulk operations — multi-select with floating action bar
-- File attachments — upload/download/delete per task
-- Task watchers — watch/unwatch with fan-out notifications
-- Calendar view — monthly, toggle with Kanban
-- Dark mode toggle in header
-- Recurring task scheduler (hourly cron)
-- Task clone/duplicate
+- Task dependencies with circular detection
+- Bulk operations with floating action bar
+- File attachments (upload / download / delete)
+- Task watchers with notification fan-out
+- Calendar view
+- Dark mode toggle
+- Recurring task scheduler
+- Task clone / duplicate
 
-### v1.0 (Sprint 1)
-- Core Kanban with drag-and-drop
-- Workspaces, boards, columns, tasks, subtasks
+### v1.0
+- Core Kanban with drag-and-drop and real-time updates (Socket.io)
+- Workspaces, boards, columns, tasks, subtasks, labels
 - Comments with @mentions
-- Labels, assignees, due dates
-- SLA engine with escalation
-- Audit trail (full history)
-- Role-based access (ADMIN/MANAGER/MEMBER)
-- Real-time via Socket.io
-- Microsoft SSO (Azure AD)
-- Microsoft Teams webhook
-- MS Planner two-way sync
-- SMTP email notifications
-- Browser push notifications
-- Board embed (iframe)
-- Reports & analytics
-- Dark mode support
+- SLA engine with escalation and audit trail
+- Role-based access (ADMIN / MANAGER / MEMBER)
+- Microsoft SSO (Azure AD), Teams webhook, Planner two-way sync
+- SMTP email, browser push notifications
+- Reports and analytics, board embed, dark mode
+
+---
+
+<div align="center">
+
+Built with Next.js · Runs on your server · No subscriptions · No cloud lock-in
+
+</div>
