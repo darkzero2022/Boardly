@@ -9,7 +9,7 @@ datasource db {
 }
 
 // ─── Auth / Users ─────────────────────────────────────────────────────────────
-// role: "ADMIN" | "MANAGER" | "MEMBER"
+// role: "ADMIN" | "MANAGER" | "MEMBER" | "VIEWER"
 
 model User {
   id            String    @id @default(cuid())
@@ -22,6 +22,8 @@ model User {
   role          String    @default("MEMBER")
   teamId        String?
   lastLoginAt   DateTime?
+  totpSecret    String?
+  totpEnabled   Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -123,11 +125,13 @@ model Board {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  workspace  Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  columns    Column[]
-  tasks      Task[]
-  slaPolicy  SLAPolicy?
-  members    BoardMember[]
+  workspace     Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  columns       Column[]
+  tasks         Task[]
+  slaPolicy     SLAPolicy?
+  members       BoardMember[]
+  webhooks      Webhook[]
+  customFields  CustomFieldDef[]
 
   @@index([workspaceId])
 }
@@ -199,6 +203,7 @@ model Task {
   blockedBy    TaskDependency[] @relation("TaskBlockedBy")
   watchers     TaskWatcher[]
   timeLogs     TimeLog[]
+  customValues CustomFieldValue[]
 
   @@index([boardId])
   @@index([columnId])
@@ -471,4 +476,49 @@ model TaskTemplate {
   subtasks    String   @default("[]") // JSON array of subtask titles
   createdById String
   createdAt   DateTime @default(now())
+}
+
+// ─── Outbound Webhooks ────────────────────────────────────────────────────────
+// events: JSON array e.g. ["task.created","task.moved","task.completed","comment.added"]
+
+model Webhook {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  secret    String?
+  events    String   @default("[]")
+  active    Boolean  @default(true)
+  boardId   String?
+  board     Board?   @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([boardId])
+}
+
+// ─── Custom Fields ────────────────────────────────────────────────────────────
+// type: "TEXT" | "NUMBER" | "DATE" | "SELECT" | "CHECKBOX"
+
+model CustomFieldDef {
+  id       String            @id @default(cuid())
+  boardId  String
+  board    Board             @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  name     String
+  type     String            @default("TEXT")
+  options  String?           // JSON array for SELECT type
+  order    Int               @default(0)
+  values   CustomFieldValue[]
+
+  @@index([boardId])
+}
+
+model CustomFieldValue {
+  id      String         @id @default(cuid())
+  taskId  String
+  task    Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fieldId String
+  field   CustomFieldDef @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  value   String?
+
+  @@unique([taskId, fieldId])
+  @@index([taskId])
 }

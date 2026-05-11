@@ -18,6 +18,7 @@ type BulkAction =
   | { type: "assign"; payload: { assigneeId: string } }
   | { type: "label_add"; payload: { labelId: string } }
   | { type: "label_remove"; payload: { labelId: string } }
+  | { type: "priority"; payload: { priority: string } }
   | { type: "delete"; payload: Record<string, never> };
 
 export async function PATCH(req: NextRequest) {
@@ -166,6 +167,27 @@ export async function PATCH(req: NextRequest) {
         } catch {
           // ignore
         }
+      }
+
+      updated = tasks.length;
+      break;
+    }
+
+    case "priority": {
+      const { priority } = action.payload;
+      const validPriorities = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
+      if (!validPriorities.includes(priority)) {
+        return NextResponse.json({ error: "Invalid priority" }, { status: 400 });
+      }
+
+      await prisma.task.updateMany({ where: { id: { in: taskIds } }, data: { priority } });
+
+      await prisma.auditLog.createMany({
+        data: tasks.map((t) => ({ taskId: t.id, userId, action: "UPDATED", field: "priority", newValue: priority })),
+      });
+
+      for (const task of tasks) {
+        try { io?.to(`board:${task.boardId}`).emit("task:updated", { taskId: task.id }); } catch { /* ignore */ }
       }
 
       updated = tasks.length;

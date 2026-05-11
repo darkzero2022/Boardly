@@ -10,6 +10,8 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith("/setup") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/setup") ||
+    pathname.startsWith("/api/auth/totp/check") ||
+    pathname.startsWith("/api/auth/totp/verify") ||
     pathname.startsWith("/embed") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
@@ -39,6 +41,15 @@ export async function middleware(req: NextRequest) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // VIEWER role: block all mutating API calls
+  if (
+    token.role === "VIEWER" &&
+    pathname.startsWith("/api/") &&
+    ["POST", "PUT", "PATCH", "DELETE"].includes(req.method)
+  ) {
+    return NextResponse.json({ error: "Read-only access" }, { status: 403 });
   }
 
   return NextResponse.next();

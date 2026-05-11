@@ -234,6 +234,7 @@ export function UserManagement({
                         <SelectItem value="ADMIN">Admin</SelectItem>
                         <SelectItem value="MANAGER">Manager</SelectItem>
                         <SelectItem value="MEMBER">Member</SelectItem>
+                        <SelectItem value="VIEWER">Viewer</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -332,6 +333,7 @@ export function UserManagement({
                 <SelectItem value="ADMIN">Admin</SelectItem>
                 <SelectItem value="MANAGER">Manager</SelectItem>
                 <SelectItem value="MEMBER">Member</SelectItem>
+                <SelectItem value="VIEWER">Viewer (read-only)</SelectItem>
               </SelectContent>
             </Select>
             <Select value={form.teamId} onValueChange={(v) => setForm((f) => ({ ...f, teamId: v }))}>
