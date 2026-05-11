@@ -1,8 +1,10 @@
 <div align="center">
 
+<img src="https://img.shields.io/badge/version-4.0-6366f1?style=for-the-badge" alt="Version 4.0" />
+
 # Boardly
 
-**Self-hosted team task management — built for your LAN, not the cloud**
+### Self-hosted team task management — built for your network, not the cloud
 
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
@@ -10,33 +12,49 @@
 [![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma)](https://prisma.io)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A full-featured Kanban application for teams of 16–500 users. Drag-and-drop boards, SLA tracking, swimlanes, time tracking, real-time collaboration, and Microsoft 365 integration — all running on your own server with zero cloud dependency.
+A full-featured Kanban application for teams of any size. Drag-and-drop boards, SLA tracking, swimlanes, time tracking, real-time collaboration, and Microsoft 365 integration — all running on your own server with zero cloud dependency.
 
-[Quick Start](#quick-start) · [Database Options](#database-options) · [Configuration](#environment-variables) · [Deployment](#production-deployment) · [Roles](#roles)
+[Quick Start](#quick-start) · [Features](#features) · [Configuration](#environment-variables) · [Deployment](#production-deployment) · [Changelog](#changelog)
 
 </div>
 
 ---
 
+## What's New in v4.0
+
+> **The User Feedback Update** — guided onboarding, richer reports, full admin UI, and faster page loads.
+
+| | Feature | Description |
+|---|---|---|
+| 🧙 | **Setup Wizard** | New installs launch a 3-step wizard to name your workspace, choose Solo or Team mode, and create your admin account — no more editing config files or running seed scripts |
+| 📊 | **Report Options** | Day-range presets (7d / 14d / 30d / 90d), a "My Tasks Only" toggle, and metric summary cards on every report tab |
+| 👥 | **Admin User Management** | Change roles, reassign teams, reset passwords, and delete users directly from the Settings UI — no database access required |
+| ⚡ | **Performance** | Skeleton loading states, HTTP Cache-Control headers on read-heavy APIs, and streaming skeletons for settings pages |
+
+---
+
 ## Features
 
-### Kanban Boards
+### 🗂 Kanban Boards
+
 | Feature | Description |
 |---|---|
 | Drag-and-drop | Smooth DnD via `@dnd-kit` — reorder tasks and move between columns |
 | Multiple workspaces | Organize boards by team, project, or department |
 | Column management | Create, rename (double-click), reorder, and color columns |
 | WIP limits | Max task count per column — orange warning at 80%, red at 100% |
-| Inline column rename | Double-click any column header (Admin/Manager) |
+| Inline column rename | Double-click any column header (Admin / Manager only) |
 
-### Views
+### 👁 Views
+
 | View | Description |
 |---|---|
 | **Kanban** | Classic column board with real-time drag-and-drop |
 | **Calendar** | Monthly calendar showing tasks by due date, color-coded by priority |
 | **Swimlanes** | Group tasks within columns by Assignee, Priority, or Label |
 
-### Task Management
+### ✅ Task Management
+
 | Feature | Description |
 |---|---|
 | Rich task drawer | Description, assignee, labels, due date, priority, subtasks, comments, full history |
@@ -49,39 +67,44 @@ A full-featured Kanban application for teams of 16–500 users. Drag-and-drop bo
 | Time tracking | Log minutes with notes per task; total displayed in drawer tab |
 | Recurring tasks | Auto-clone daily / weekly / monthly via scheduled cron |
 
-### Productivity
+### 🚀 Productivity
+
 | Feature | Description |
 |---|---|
-| Global search | Instant search across tasks, comments, and boards with debounced popover |
+| Global search | Instant search across tasks, comments, and boards |
 | Bulk operations | Multi-select tasks → move column, reassign, add label, or delete |
 | Keyboard shortcuts | `?` overlay — `N` new task, `B` bulk, `1/2` switch views, `Esc` close |
-| Board templates | Save any board as a template (columns + SLA policy), create new boards from it |
+| Board templates | Save any board as a template, create new boards from it |
 | Task templates | Reusable task starters insertable from the New Task dialog |
 | My Dashboard | Personal view — stats, my tasks by priority, @mentions, activity feed |
 
-### SLA & Automation
+### 🔔 SLA & Automation
+
 | Feature | Description |
 |---|---|
-| SLA engine | Per-board policies (hours by priority). Tasks get auto-calculated deadlines |
+| SLA engine | Per-board policies (hours by priority) with auto-calculated deadlines |
 | SLA escalation | Configurable escalation steps — assignee → manager → admin |
 | Audit trail | Full history of every field change on every task |
 | Recurring scheduler | Hourly cron clones recurring tasks on schedule |
 
-### Collaboration
+### 🤝 Collaboration
+
 | Feature | Description |
 |---|---|
-| Real-time updates | Socket.io — moves, new tasks, and comments appear instantly on all connected browsers |
+| Real-time updates | Socket.io — moves, new tasks, and comments appear instantly |
 | Comments & @mentions | Threaded comments; @mention a user to notify them |
 | Notifications | In-app bell, email (SMTP), browser push (VAPID) |
 
-### Authentication
+### 🔐 Authentication
+
 | Method | Description |
 |---|---|
-| Local accounts | Email + bcrypt password. Admin controls who can register |
+| Local accounts | Email + bcrypt password — admin controls who can sign up |
 | LDAP / Active Directory | Corporate directory login — AD, OpenLDAP, FreeIPA. Auto-provisions users on first login |
-| Microsoft SSO | Azure AD / Entra ID OAuth. Admin can enable/disable per provider |
+| Microsoft SSO | Azure AD / Entra ID OAuth — admin can enable/disable per provider |
 
-### Microsoft 365 Integration
+### 🏢 Microsoft 365 Integration
+
 | Feature | Description |
 |---|---|
 | Teams webhooks | Post task events to Teams channels via Incoming Webhook |
@@ -89,12 +112,15 @@ A full-featured Kanban application for teams of 16–500 users. Drag-and-drop bo
 | Teams tab | Embed any board as a Teams tab |
 | Planner two-way sync | Sync tasks with Microsoft Planner via Graph API |
 
-### Admin & Reporting
+### 📋 Admin & Reporting
+
 | Feature | Description |
 |---|---|
+| Setup wizard | First-run guided setup — workspace name, mode, admin account |
 | Role-based access | ADMIN / MANAGER / MEMBER with per-board overrides |
-| Reports | Workload distribution, SLA compliance, burndown charts |
-| CSV / Excel export | Export any report |
+| User management UI | Change roles, reset passwords, delete users — no DB editing required |
+| Reports | Workload, SLA compliance, burndown — with date presets and solo/team toggle |
+| Excel export | Export any report to a formatted `.xlsx` |
 | Dark mode | Full dark theme, persisted per user |
 | Board embed | Embed any board as an iframe |
 
@@ -104,14 +130,15 @@ A full-featured Kanban application for teams of 16–500 users. Drag-and-drop bo
 
 | Layer | Technology |
 |---|---|
-| Framework | [Next.js 14](https://nextjs.org) (App Router) |
+| Framework | [Next.js 14](https://nextjs.org) App Router + custom HTTP server |
 | Language | TypeScript 5 |
 | Styling | Tailwind CSS + [shadcn/ui](https://ui.shadcn.com) |
 | Database | SQLite · PostgreSQL · MySQL (via Prisma) |
-| ORM | [Prisma](https://prisma.io) |
+| ORM | [Prisma 5](https://prisma.io) |
 | Auth | [NextAuth v5](https://authjs.dev) — credentials + LDAP + Azure AD |
 | Real-time | [Socket.io](https://socket.io) |
 | Drag & Drop | [@dnd-kit](https://dndkit.com) |
+| Charts | [Recharts](https://recharts.org) |
 | Scheduling | [node-cron](https://github.com/node-cron/node-cron) |
 | Email | [Nodemailer](https://nodemailer.com) |
 
@@ -141,24 +168,18 @@ chmod +x setup.sh start.sh
 The setup script will:
 1. Check Node.js version
 2. Install all dependencies
-3. **Ask you to choose a database** (SQLite / PostgreSQL / MySQL)
-4. **Ask whether to enable LDAP** (optional — for on-premise AD/LDAP)
-5. Generate `.env.local` with a random auth secret and your LAN IP
-6. Run database migrations and seed the admin account
+3. Ask you to choose a database (SQLite / PostgreSQL / MySQL)
+4. Ask whether to enable LDAP (optional)
+5. Generate `.env.local` with a random auth secret
+6. Run database migrations
 
-**Default login after setup:**
-```
-Email:    admin@boardly.local
-Password: admin123
-```
-
-> Change the admin password immediately after first login.
+**On first launch**, the app detects a fresh database and walks you through a guided setup wizard to create your admin account and workspace. No default credentials, no seed scripts.
 
 ---
 
 ## Database Options
 
-The setup script walks you through this interactively. See **[docs/database-setup.md](docs/database-setup.md)** for full details including connection pooling, backups, HA, and migrating SQLite → PostgreSQL.
+The setup script walks you through this interactively. See **[docs/database-setup.md](docs/database-setup.md)** for connection pooling, backups, HA, and migrating SQLite → PostgreSQL.
 
 | Database | Best for | Example connection string |
 |---|---|---|
@@ -172,9 +193,10 @@ Managed cloud options: Supabase, Neon, Railway, AWS RDS, PlanetScale.
 
 ## Environment Variables
 
-Copy `.env.local.example` to `.env.local` and fill in your values, or let `setup.sh` / `setup.bat` generate it automatically.
+Copy `.env.local.example` to `.env.local`, or let the setup script generate it automatically.
 
 ### Required
+
 | Variable | Description |
 |---|---|
 | `DATABASE_URL` | Database connection string |
@@ -182,26 +204,29 @@ Copy `.env.local.example` to `.env.local` and fill in your values, or let `setup
 | `AUTH_URL` | Full URL of the app, e.g. `http://192.168.1.10:3000` |
 
 ### LDAP / Active Directory
+
 | Variable | Description |
 |---|---|
-| `LDAP_URI` | LDAP server URI, e.g. `ldap://dc.company.com:389`. Leave blank to disable |
+| `LDAP_URI` | LDAP server URI, e.g. `ldap://dc.company.com:389` — leave blank to disable |
 | `LDAP_BASE_DN` | Base DN, e.g. `dc=company,dc=com` |
 | `LDAP_BIND_DN` | Service account DN for searching (leave blank for anonymous bind) |
 | `LDAP_BIND_PASSWORD` | Service account password |
-| `LDAP_USER_FILTER` | Search filter. Default covers `sAMAccountName`, `uid`, `userPrincipalName` |
-| `LDAP_TLS_REJECT_UNAUTHORIZED` | Set to `false` for self-signed certs. Default: `true` |
+| `LDAP_USER_FILTER` | Search filter — default covers `sAMAccountName`, `uid`, `userPrincipalName` |
+| `LDAP_TLS_REJECT_UNAUTHORIZED` | Set `false` for self-signed certs. Default: `true` |
 
 ### Microsoft SSO
+
 | Variable | Description |
 |---|---|
-| `AZURE_AD_CLIENT_ID` | Azure App Registration client ID. Leave blank to disable |
+| `AZURE_AD_CLIENT_ID` | Azure App Registration client ID — leave blank to disable |
 | `AZURE_AD_CLIENT_SECRET` | Client secret |
 | `AZURE_AD_TENANT_ID` | Directory (tenant) ID |
 
 ### Notifications
+
 | Variable | Description |
 |---|---|
-| `SMTP_HOST` | SMTP server hostname. Leave blank to disable email |
+| `SMTP_HOST` | SMTP server hostname — leave blank to disable email |
 | `SMTP_PORT` | Default: `587` |
 | `SMTP_USER` / `SMTP_PASS` | SMTP credentials |
 | `SMTP_FROM` | From address, e.g. `Boardly <noreply@boardly.local>` |
@@ -209,9 +234,10 @@ Copy `.env.local.example` to `.env.local` and fill in your values, or let `setup
 | `VAPID_PRIVATE_KEY` | Browser push private key |
 
 ### Microsoft 365 Integration
+
 | Variable | Description |
 |---|---|
-| `TEAMS_WEBHOOK_URL` | Teams Incoming Webhook URL. Leave blank to disable |
+| `TEAMS_WEBHOOK_URL` | Teams Incoming Webhook URL — leave blank to disable |
 | `GRAPH_CLIENT_ID` | MS Graph app ID for Planner sync |
 | `GRAPH_CLIENT_SECRET` | MS Graph client secret |
 | `GRAPH_TENANT_ID` | MS Graph tenant ID |
@@ -262,7 +288,7 @@ LDAP_URI="ldaps://dc.company.com:636"
 LDAP_TLS_REJECT_UNAUTHORIZED="true"
 ```
 
-Users who log in via LDAP are auto-provisioned with the `MEMBER` role on first login. Admins can promote them in **Settings → Users**.
+Users who log in via LDAP are auto-provisioned with the `MEMBER` role. Admins can promote them in **Settings → Users**.
 
 ---
 
@@ -278,18 +304,29 @@ Users who log in via LDAP are auto-provisioned with the `MEMBER` role on first l
 
 ---
 
+## Roles
+
+| Role | Boards | Tasks | Settings | Users |
+|---|---|---|---|---|
+| **ADMIN** | Full access | Full access | All settings | Create · Edit · Delete |
+| **MANAGER** | Create & manage | Full access | Board settings | View |
+| **MEMBER** | View & contribute | Create / edit assigned | — | View |
+
+---
+
 ## Start Scripts
 
 | Command | Description |
 |---|---|
 | `./start.sh` or `start.bat` | Development server with hot reload |
-| `./start.sh prod` or `start.bat prod` | Production build + start |
+| `./start.sh prod` or `start.bat prod` | Production build + optimized start |
 
 ---
 
 ## Production Deployment
 
-### Nginx reverse proxy
+### Nginx Reverse Proxy
+
 ```nginx
 server {
     listen 80;
@@ -307,7 +344,8 @@ server {
 }
 ```
 
-### PM2 (process manager)
+### PM2 (Process Manager)
+
 ```bash
 npm install -g pm2
 pm2 start "npx tsx server.ts" --name boardly
@@ -316,6 +354,7 @@ pm2 startup
 ```
 
 ### Docker
+
 ```dockerfile
 FROM node:20-alpine
 WORKDIR /app
@@ -338,22 +377,13 @@ docker run -d \
 
 ---
 
-## Roles
-
-| Role | Boards | Tasks | Settings | Users |
-|---|---|---|---|---|
-| **ADMIN** | Full access | Full access | All settings | Create / edit / delete |
-| **MANAGER** | Create & manage | Full access | Board settings | View |
-| **MEMBER** | View & work | Create / edit assigned | — | View |
-
----
-
 ## Project Structure
 
 ```
 Boardly/
 ├── app/
 │   ├── (auth)/login/           # Login page (local, LDAP, Microsoft SSO)
+│   ├── setup/                  # First-run setup wizard
 │   ├── (dashboard)/            # Authenticated pages
 │   │   ├── page.tsx            # My Dashboard
 │   │   ├── boards/[id]/        # Kanban board (kanban, calendar, swimlane views)
@@ -361,14 +391,17 @@ Boardly/
 │   │   ├── reports/            # Analytics & reports
 │   │   └── settings/           # Users, teams, SLA, notifications, integrations
 │   └── api/                    # REST API routes
+│       ├── setup/              # First-run setup endpoint
+│       ├── users/[id]/         # User PATCH (role/team/password) + DELETE
+│       └── reports/            # Workload, SLA, burndown, export
 ├── components/
 │   ├── kanban/                 # Board, columns, cards, drawer, calendar, swimlanes
 │   ├── dashboard/              # Dashboard widgets
-│   ├── board-templates/        # Board template dialogs
-│   ├── task-templates/         # Task template picker
+│   ├── reports/                # Reports dashboard with charts
+│   ├── settings/               # User management, team management, SLA, labels
 │   └── ui/                     # shadcn/ui base components
 ├── lib/
-│   ├── auth.ts                 # NextAuth configuration
+│   ├── auth.ts                 # NextAuth configuration (credentials, LDAP, Azure AD)
 │   ├── auth/ldap.ts            # LDAP authentication module
 │   ├── db.ts                   # Prisma client singleton
 │   ├── sla/                    # SLA engine and escalation
@@ -377,11 +410,12 @@ Boardly/
 │   └── integrations/           # Teams, Planner, SMTP
 ├── prisma/
 │   ├── schema.prisma           # Database schema
-│   ├── migrations/             # SQLite migration history
-│   └── seed.ts                 # Initial data (admin user, sample workspace)
+│   ├── migrations/             # Migration history
+│   └── seed.ts                 # Sample data for development
 ├── docs/
 │   └── database-setup.md       # Enterprise database guide
 ├── server.ts                   # Custom HTTP server (Next.js + Socket.io + cron)
+├── middleware.ts               # Auth guard + first-run redirect
 ├── setup.sh / setup.bat        # Interactive setup scripts
 ├── start.sh / start.bat        # Dev and production start scripts
 └── .env.local.example          # Environment variable reference
@@ -392,9 +426,9 @@ Boardly/
 ## Troubleshooting
 
 **Database is locked (SQLite)**
-Multiple Node processes hold the file. Kill them all and restart:
+Multiple Node processes are holding the file. Kill them and restart:
 ```bash
-# Linux/macOS
+# Linux / macOS
 pkill -f "tsx server.ts"
 
 # Windows
@@ -403,12 +437,11 @@ taskkill /F /IM node.exe
 
 **Auth routes returning 404**
 ```bash
-rm -rf .next
-./start.sh
+rm -rf .next && ./start.sh
 ```
 
 **Socket.io not connecting from another machine**
-Ensure `AUTH_URL` in `.env.local` is set to the server LAN IP, not `localhost`.
+Make sure `AUTH_URL` in `.env.local` is the server LAN IP, not `localhost`.
 
 **Cannot find module @prisma/client**
 ```bash
@@ -416,16 +449,38 @@ npx prisma generate
 ```
 
 **Forgot admin password**
+Use the admin's "Reset Password" option in **Settings → Users**, or:
 ```bash
 npx prisma studio
-# Navigate to User → find admin → edit passwordHash
+# Navigate to User → find admin → clear passwordHash, then set a new one via the UI
 ```
+
+**Setup wizard shows on every load**
+The `setup_complete` cookie may have been cleared. Re-run setup or manually set `setupComplete = true` in `GlobalNotifConfig` via Prisma Studio.
 
 ---
 
 ## Changelog
 
-### v3.0
+### v4.0 — User Feedback Update
+> *Setup wizard · Report options · Admin user management · Performance*
+
+- **Setup wizard** — guided first-run flow: workspace name, Solo/Team mode, admin account. No more default seed credentials
+- **First-run redirect** — middleware detects empty database and routes new installs to `/setup` automatically
+- **Report date presets** — 7d / 14d / 30d / 90d buttons on SLA and Burndown tabs
+- **"My Tasks Only" toggle** — filter workload report to current user; auto-enabled for solo installs
+- **Report metric cards** — summary cards on all three report tabs (workload, SLA, burndown)
+- **Inline role editing** — change ADMIN / MANAGER / MEMBER from a dropdown in the user table
+- **Inline team reassignment** — move users between teams without recreating them
+- **Password reset UI** — admin can generate and set a new password for any user
+- **Delete user** — confirmation dialog; self-deletion and self-demotion blocked at API level
+- **Real last-login timestamps** — `lastLoginAt` field on User, updated on every sign-in
+- **Toast notifications** — success and error feedback for all user management actions
+- **Skeleton loading states** — pulse skeletons on reports, settings, and dashboard pages
+- **HTTP caching** — Cache-Control headers on workload (30s), SLA/burndown (60s), labels (5min), teams (2min)
+- **appMode awareness** — solo installs auto-default reports to personal view
+
+### v3.0 — Enterprise Auth & Productivity
 - LDAP / Active Directory authentication with auto-provisioning
 - WIP limits on columns (orange at 80%, red at 100%)
 - Swimlane view — group by Assignee, Priority, or Label
@@ -436,7 +491,7 @@ npx prisma studio
 - Inline column rename (double-click, Admin/Manager only)
 - Boardly rebrand
 
-### v2.0
+### v2.0 — Collaboration & Views
 - Global search across tasks, comments, and boards
 - My Dashboard — stats, my tasks, @mentions, activity feed
 - Task dependencies with circular detection
@@ -448,7 +503,7 @@ npx prisma studio
 - Recurring task scheduler
 - Task clone / duplicate
 
-### v1.0
+### v1.0 — Foundation
 - Core Kanban with drag-and-drop and real-time updates (Socket.io)
 - Workspaces, boards, columns, tasks, subtasks, labels
 - Comments with @mentions
@@ -456,7 +511,7 @@ npx prisma studio
 - Role-based access (ADMIN / MANAGER / MEMBER)
 - Microsoft SSO (Azure AD), Teams webhook, Planner two-way sync
 - SMTP email, browser push notifications
-- Reports and analytics, board embed, dark mode
+- Reports and analytics, board embed
 
 ---
 
