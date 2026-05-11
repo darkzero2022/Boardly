@@ -19,11 +19,14 @@ export default async function UsersSettingsPage() {
         teamId: true,
         team: { select: { id: true, name: true } },
         createdAt: true,
+        lastLoginAt: true,
       },
       orderBy: { name: "asc" },
     }),
     prisma.team.findMany({ orderBy: { name: "asc" } }),
   ]);
+
+  const usersWithLastLogin = users.map((u) => ({ ...u }));
 
   return (
     <div className="space-y-6">
@@ -33,7 +36,11 @@ export default async function UsersSettingsPage() {
           Add, edit, and manage user accounts and roles
         </p>
       </div>
-      <UserManagement initialUsers={users as never} teams={teams} />
+      <UserManagement
+        initialUsers={usersWithLastLogin as never}
+        teams={teams}
+        currentUserId={session.user.id}
+      />
     </div>
   );
 }
