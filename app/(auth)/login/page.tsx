@@ -10,6 +10,7 @@ export default function LoginPage() {
   const router = useRouter();
   const params = useSearchParams();
   const error = params.get("error");
+  const setupDone = params.get("setup") === "done";
 
   const [mode, setMode] = useState<AuthMode>("credentials");
   const [email, setEmail] = useState("");
@@ -65,6 +66,12 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-gray-900">Boardly</h1>
           <p className="text-sm text-gray-500 mt-1">Sign in to your workspace</p>
         </div>
+
+        {setupDone && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            ✓ Workspace created! Sign in with the admin account you just set up.
+          </div>
+        )}
 
         {(error || authError) && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">

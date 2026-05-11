@@ -21,6 +21,7 @@ model User {
   microsoftId   String?   @unique
   role          String    @default("MEMBER")
   teamId        String?
+  lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -356,6 +357,9 @@ model GlobalNotifConfig {
 
   allowMicrosoftSSO Boolean @default(true)
   allowCredentials  Boolean @default(true)
+
+  setupComplete Boolean @default(false)
+  appMode       String  @default("team")
 }
 
 // ─── MS Planner Sync ──────────────────────────────────────────────────────────

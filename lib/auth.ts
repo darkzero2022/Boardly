@@ -144,6 +144,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth(async () => {
           });
           token.role = dbUser?.role ?? undefined;
           token.teamId = dbUser?.teamId ?? undefined;
+          // Record the actual login timestamp
+          await prisma.user.update({
+            where: { id: user.id! },
+            data: { lastLoginAt: new Date() },
+          });
         }
         return token;
       },

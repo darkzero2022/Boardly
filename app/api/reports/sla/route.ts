@@ -53,14 +53,17 @@ export async function GET(req: NextRequest) {
   const breached = tasks.filter((t) => t.slaStatus === "BREACHED").length;
   const atRisk = tasks.filter((t) => t.slaStatus === "AT_RISK").length;
 
-  return NextResponse.json({
-    chart,
-    summary: {
-      total,
-      ok: total - breached - atRisk,
-      atRisk,
-      breached,
-      compliancePct: total === 0 ? 100 : Math.round(((total - breached) / total) * 100),
+  return NextResponse.json(
+    {
+      chart,
+      summary: {
+        total,
+        ok: total - breached - atRisk,
+        atRisk,
+        breached,
+        compliancePct: total === 0 ? 100 : Math.round(((total - breached) / total) * 100),
+      },
     },
-  });
+    { headers: { "Cache-Control": "private, max-age=60" } }
+  );
 }

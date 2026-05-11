@@ -8,7 +8,9 @@ export async function GET() {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const labels = await prisma.label.findMany({ orderBy: { name: "asc" } });
-  return NextResponse.json(labels);
+  return NextResponse.json(labels, {
+    headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=60" },
+  });
 }
 
 const schema = z.object({
