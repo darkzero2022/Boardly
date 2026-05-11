@@ -25,6 +25,24 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setAuthError(null);
+
+    // Check if this user has 2FA enabled before completing sign-in
+    const totpCheck = await fetch("/api/auth/totp/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (totpCheck.ok) {
+      const { requires2FA } = await totpCheck.json();
+      if (requires2FA) {
+        setLoading(false);
+        const cb = params.get("callbackUrl") ?? "/";
+        router.push(`/login/totp?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&callbackUrl=${encodeURIComponent(cb)}`);
+        return;
+      }
+    }
+
     const res = await signIn("credentials", { email, password, redirect: false });
     setLoading(false);
     if (res?.error) {
