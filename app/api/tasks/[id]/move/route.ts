@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit/middleware";
+import { dispatchWebhooks } from "@/lib/notifications/dispatcher";
 import { z } from "zod";
 
 const schema = z.object({
@@ -52,6 +53,9 @@ export async function PATCH(
       order: parsed.data.order,
     });
   }
+
+  // Outbound webhooks
+  dispatchWebhooks("task.moved", { taskId: params.id, columnId: parsed.data.columnId }, parsed.data.boardId);
 
   return NextResponse.json(updated);
 }

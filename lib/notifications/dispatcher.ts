@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { sendEmail } from "./email";
 import { sendTeamsNotification } from "@/lib/integrations/teams/webhook";
 import { sendBrowserPush } from "./push";
+import { createHmac } from "crypto";
 
 interface DispatchPayload {
   userId: string;
@@ -114,6 +115,34 @@ export async function dispatch(payload: DispatchPayload) {
   }
 
   await Promise.allSettled(promises);
+}
+
+/** Fire outbound webhooks for a given event. Fire-and-forget — never throws. */
+export async function dispatchWebhooks(event: string, payload: object, boardId?: string) {
+  try {
+    const webhooks = await prisma.webhook.findMany({
+      where: {
+        active: true,
+        OR: [{ boardId: null }, { boardId: boardId ?? null }],
+      },
+    });
+    for (const wh of webhooks) {
+      try {
+        const events: string[] = JSON.parse(wh.events);
+        if (!events.includes(event)) continue;
+        const body = JSON.stringify({ event, payload, timestamp: new Date().toISOString() });
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (wh.secret) {
+          headers["X-Boardly-Signature"] = createHmac("sha256", wh.secret).update(body).digest("hex");
+        }
+        fetch(wh.url, { method: "POST", headers, body }).catch(() => {});
+      } catch {
+        // skip individual failures
+      }
+    }
+  } catch {
+    // never block the caller
+  }
 }
 
 // Lazy import to avoid circular dependency

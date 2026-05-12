@@ -12,7 +12,9 @@ export async function GET() {
     orderBy: { name: "asc" },
   });
 
-  return NextResponse.json(teams);
+  return NextResponse.json(teams, {
+    headers: { "Cache-Control": "private, max-age=120" },
+  });
 }
 
 const schema = z.object({

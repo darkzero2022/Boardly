@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { assignSLADeadline } from "@/lib/sla/engine";
 import { logAudit } from "@/lib/audit/middleware";
-import { dispatch } from "@/lib/notifications/dispatcher";
+import { dispatch, dispatchWebhooks } from "@/lib/notifications/dispatcher";
 import { parseMentions } from "@/lib/utils";
 import { pushTaskToPlanner } from "@/lib/integrations/planner/sync";
 import { sendTaskCard } from "@/lib/integrations/teams/webhook";
@@ -150,6 +150,9 @@ export async function POST(req: NextRequest) {
   if (io) {
     io.to(`board:${boardId}`).emit("task:created", task);
   }
+
+  // Outbound webhooks (fire-and-forget)
+  dispatchWebhooks("task.created", { task: { id: task.id, title: task.title, priority: task.priority, boardId } }, boardId);
 
   // MS Planner sync (background)
   const board = await prisma.board.findUnique({ where: { id: boardId } });

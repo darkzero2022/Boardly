@@ -1,6 +1,6 @@
 "use client";
 
-import { X, MoveRight, UserPlus, Tag, Trash2, ChevronUp } from "lucide-react";
+import { X, MoveRight, UserPlus, Tag, Trash2, ChevronUp, Flag } from "lucide-react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ interface BulkActionBarProps {
   onMove: (columnId: string) => void;
   onAssign: () => void;
   onLabelAdd: () => void;
+  onPriority: (priority: string) => void;
   onDelete: () => void;
   onClear: () => void;
 }
@@ -20,6 +21,7 @@ export function BulkActionBar({
   onMove,
   onAssign,
   onLabelAdd,
+  onPriority,
   onDelete,
   onClear,
 }: BulkActionBarProps) {
@@ -137,6 +139,37 @@ export function BulkActionBar({
           <Tag className="w-4 h-4" />
           Add Label
         </button>
+
+        {/* Set Priority */}
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger asChild>
+            <button
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium",
+                "bg-primary-foreground/15 hover:bg-primary-foreground/25 transition-colors",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
+              )}
+            >
+              <Flag className="w-4 h-4" />
+              Priority
+              <ChevronUp className="w-3 h-3 opacity-70" />
+            </button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content side="top" align="end" sideOffset={8}
+              className="z-50 min-w-[140px] rounded-md border border-border bg-card shadow-md p-1 text-sm text-foreground">
+              <DropdownMenu.Label className="px-2 py-1 text-xs font-medium text-muted-foreground">Set priority</DropdownMenu.Label>
+              <DropdownMenu.Separator className="my-1 h-px bg-border" />
+              {["CRITICAL", "HIGH", "MEDIUM", "LOW"].map((p) => (
+                <DropdownMenu.Item key={p} onSelect={() => onPriority(p)}
+                  className="flex items-center gap-2 rounded px-2 py-1.5 cursor-pointer hover:bg-accent focus:bg-accent focus:outline-none">
+                  <span className={`w-2 h-2 rounded-full ${p === "CRITICAL" ? "bg-red-500" : p === "HIGH" ? "bg-orange-500" : p === "MEDIUM" ? "bg-blue-500" : "bg-gray-400"}`} />
+                  {p}
+                </DropdownMenu.Item>
+              ))}
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
 
         {/* Delete */}
         <button

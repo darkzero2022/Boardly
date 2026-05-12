@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import {
   BarChart,
   Bar,
@@ -33,23 +34,72 @@ interface SLASummary {
 
 type ActiveTab = "workload" | "sla" | "burndown";
 
+const DAY_PRESETS = [7, 14, 30, 90] as const;
+
+function ChartSkeleton() {
+  return <div className="h-[300px] bg-muted animate-pulse rounded-xl" />;
+}
+
+function MetricCard({ label, value, color = "text-foreground" }: { label: string; value: string | number; color?: string }) {
+  return (
+    <div className="bg-card border border-border rounded-xl p-4 text-center">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
+    </div>
+  );
+}
+
 export function ReportsDashboard() {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<ActiveTab>("workload");
+
   const [workload, setWorkload] = useState<WorkloadUser[]>([]);
   const [slaData, setSlaData] = useState<SLASummary | null>(null);
   const [burndown, setBurndown] = useState<{ date: string; created: number; completed: number }[]>([]);
 
+  const [loading, setLoading] = useState({ workload: true, sla: true, burndown: true });
+
+  const [slaDays, setSlaDays] = useState(30);
+  const [burndownDays, setBurndownDays] = useState(14);
+  const [soloMode, setSoloMode] = useState(false);
+  const [appModeLoaded, setAppModeLoaded] = useState(false);
+
+  const fetchWorkload = useCallback(async () => {
+    setLoading((l) => ({ ...l, workload: true }));
+    const userId = soloMode && session?.user?.id ? `?userId=${session.user.id}` : "";
+    const data = await fetch(`/api/reports/workload${userId}`).then((r) => r.json());
+    setWorkload(data);
+    setLoading((l) => ({ ...l, workload: false }));
+  }, [soloMode, session?.user?.id]);
+
+  const fetchSla = useCallback(async () => {
+    setLoading((l) => ({ ...l, sla: true }));
+    const data = await fetch(`/api/reports/sla?days=${slaDays}`).then((r) => r.json());
+    setSlaData(data);
+    setLoading((l) => ({ ...l, sla: false }));
+  }, [slaDays]);
+
+  const fetchBurndown = useCallback(async () => {
+    setLoading((l) => ({ ...l, burndown: true }));
+    const data = await fetch(`/api/reports/burndown?days=${burndownDays}`).then((r) => r.json());
+    setBurndown(data);
+    setLoading((l) => ({ ...l, burndown: false }));
+  }, [burndownDays]);
+
+  // Load appMode from setup config to default solo toggle for solo installs
   useEffect(() => {
-    fetch("/api/reports/workload")
+    fetch("/api/setup")
       .then((r) => r.json())
-      .then(setWorkload);
-    fetch("/api/reports/sla?days=30")
-      .then((r) => r.json())
-      .then(setSlaData);
-    fetch("/api/reports/burndown?days=14")
-      .then((r) => r.json())
-      .then(setBurndown);
+      .then(({ appMode }) => {
+        if (appMode === "solo") setSoloMode(true);
+        setAppModeLoaded(true);
+      })
+      .catch(() => setAppModeLoaded(true));
   }, []);
+
+  useEffect(() => { if (appModeLoaded) fetchWorkload(); }, [fetchWorkload, appModeLoaded]);
+  useEffect(() => { fetchSla(); }, [fetchSla]);
+  useEffect(() => { fetchBurndown(); }, [fetchBurndown]);
 
   async function handleExport() {
     const res = await fetch("/api/reports/export");
@@ -67,6 +117,16 @@ export function ReportsDashboard() {
     { key: "sla" as const, label: "SLA Compliance", icon: Shield },
     { key: "burndown" as const, label: "Burndown", icon: TrendingDown },
   ];
+
+  // Derived metrics
+  const workloadTotals = workload.reduce(
+    (acc, u) => ({ total: acc.total + u.total, atRisk: acc.atRisk + u.atRisk, breached: acc.breached + u.breached }),
+    { total: 0, atRisk: 0, breached: 0 }
+  );
+  const burndownTotals = burndown.reduce(
+    (acc, d) => ({ created: acc.created + d.created, completed: acc.completed + d.completed }),
+    { created: 0, completed: 0 }
+  );
 
   return (
     <div>
@@ -96,22 +156,49 @@ export function ReportsDashboard() {
         </Button>
       </div>
 
+      {/* ── Workload tab ─────────────────────────────────────────── */}
       {activeTab === "workload" && (
         <div className="space-y-4">
+          {/* Controls */}
+          <div className="flex items-center justify-between">
+            <div className="grid grid-cols-3 gap-4 flex-1 mr-4">
+              <MetricCard label="Total Assigned" value={workloadTotals.total} />
+              <MetricCard label="At Risk" value={workloadTotals.atRisk} color="text-yellow-600" />
+              <MetricCard label="Breached" value={workloadTotals.breached} color="text-red-600" />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none shrink-0">
+              <div
+                role="switch"
+                aria-checked={soloMode}
+                onClick={() => setSoloMode((v) => !v)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${
+                  soloMode ? "bg-primary" : "bg-muted-foreground/30"
+                }`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${soloMode ? "translate-x-4" : "translate-x-0.5"}`} />
+              </div>
+              My tasks only
+            </label>
+          </div>
+
           <div className="bg-card border border-border rounded-xl p-6">
-            <h3 className="text-sm font-semibold mb-4">Tasks per Team Member</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={workload}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="ok" name="On Track" fill="#22c55e" stackId="a" />
-                <Bar dataKey="atRisk" name="At Risk" fill="#f59e0b" stackId="a" />
-                <Bar dataKey="breached" name="Breached" fill="#ef4444" stackId="a" />
-              </BarChart>
-            </ResponsiveContainer>
+            <h3 className="text-sm font-semibold mb-4">
+              {soloMode ? "My Task Distribution" : "Tasks per Team Member"}
+            </h3>
+            {loading.workload ? <ChartSkeleton /> : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={workload}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="ok" name="On Track" fill="#22c55e" stackId="a" />
+                  <Bar dataKey="atRisk" name="At Risk" fill="#f59e0b" stackId="a" />
+                  <Bar dataKey="breached" name="Breached" fill="#ef4444" stackId="a" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
 
           <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -127,73 +214,138 @@ export function ReportsDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {workload.map((u) => (
-                  <tr key={u.id} className="hover:bg-muted/50">
-                    <td className="px-4 py-3 font-medium">{u.name}</td>
-                    <td className="px-4 py-3 text-center">{u.total}</td>
-                    <td className="px-4 py-3 text-center text-green-600">{u.ok}</td>
-                    <td className="px-4 py-3 text-center text-yellow-600">{u.atRisk}</td>
-                    <td className="px-4 py-3 text-center text-red-600">{u.breached}</td>
-                    <td className="px-4 py-3 text-center">{u.critical}</td>
-                  </tr>
-                ))}
+                {loading.workload
+                  ? Array.from({ length: 3 }).map((_, i) => (
+                      <tr key={i}>
+                        {Array.from({ length: 6 }).map((__, j) => (
+                          <td key={j} className="px-4 py-3">
+                            <div className="h-4 bg-muted animate-pulse rounded" />
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  : workload.map((u) => (
+                      <tr key={u.id} className="hover:bg-muted/50">
+                        <td className="px-4 py-3 font-medium">{u.name}</td>
+                        <td className="px-4 py-3 text-center">{u.total}</td>
+                        <td className="px-4 py-3 text-center text-green-600">{u.ok}</td>
+                        <td className="px-4 py-3 text-center text-yellow-600">{u.atRisk}</td>
+                        <td className="px-4 py-3 text-center text-red-600">{u.breached}</td>
+                        <td className="px-4 py-3 text-center">{u.critical}</td>
+                      </tr>
+                    ))}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {activeTab === "sla" && slaData && (
+      {/* ── SLA tab ──────────────────────────────────────────────── */}
+      {activeTab === "sla" && (
         <div className="space-y-4">
-          {/* Summary cards */}
-          <div className="grid grid-cols-4 gap-4">
-            {[
-              { label: "Total Tasks", value: slaData.summary.total, color: "text-foreground" },
-              { label: "On Track", value: slaData.summary.ok, color: "text-green-600" },
-              { label: "At Risk", value: slaData.summary.atRisk, color: "text-yellow-600" },
-              { label: "Compliance Rate", value: `${slaData.summary.compliancePct}%`, color: "text-primary" },
-            ].map((card) => (
-              <div key={card.label} className="bg-card border border-border rounded-xl p-4 text-center">
-                <p className="text-xs text-muted-foreground">{card.label}</p>
-                <p className={`text-2xl font-bold mt-1 ${card.color}`}>{card.value}</p>
-              </div>
+          {slaData && !loading.sla ? (
+            <div className="grid grid-cols-4 gap-4">
+              <MetricCard label="Total Tasks" value={slaData.summary.total} />
+              <MetricCard label="On Track" value={slaData.summary.ok} color="text-green-600" />
+              <MetricCard label="At Risk" value={slaData.summary.atRisk} color="text-yellow-600" />
+              <MetricCard label="Compliance Rate" value={`${slaData.summary.compliancePct}%`} color="text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-card border border-border rounded-xl p-4 h-20 animate-pulse bg-muted" />
+              ))}
+            </div>
+          )}
+
+          {/* Day presets */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Show:</span>
+            {DAY_PRESETS.map((d) => (
+              <button
+                key={d}
+                onClick={() => setSlaDays(d)}
+                className={`px-3 py-1 text-xs rounded-md border transition-colors ${
+                  slaDays === d
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:border-foreground"
+                }`}
+              >
+                {d}d
+              </button>
             ))}
           </div>
 
           <div className="bg-card border border-border rounded-xl p-6">
-            <h3 className="text-sm font-semibold mb-4">SLA Compliance Over 30 Days</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={slaData.chart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-                <YAxis yAxisId="right" orientation="right" unit="%" domain={[0, 100]} tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Bar yAxisId="left" dataKey="ok" name="On Track" fill="#22c55e" stackId="a" />
-                <Bar yAxisId="left" dataKey="atRisk" name="At Risk" fill="#f59e0b" stackId="a" />
-                <Bar yAxisId="left" dataKey="breached" name="Breached" fill="#ef4444" stackId="a" />
-                <Line yAxisId="right" type="monotone" dataKey="compliancePct" name="Compliance %" stroke="#3b82f6" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+            <h3 className="text-sm font-semibold mb-4">SLA Compliance Over {slaDays} Days</h3>
+            {loading.sla ? <ChartSkeleton /> : slaData && (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={slaData.chart}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
+                  <YAxis yAxisId="right" orientation="right" unit="%" domain={[0, 100]} tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar yAxisId="left" dataKey="ok" name="On Track" fill="#22c55e" stackId="a" />
+                  <Bar yAxisId="left" dataKey="atRisk" name="At Risk" fill="#f59e0b" stackId="a" />
+                  <Bar yAxisId="left" dataKey="breached" name="Breached" fill="#ef4444" stackId="a" />
+                  <Line yAxisId="right" type="monotone" dataKey="compliancePct" name="Compliance %" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       )}
 
+      {/* ── Burndown tab ─────────────────────────────────────────── */}
       {activeTab === "burndown" && (
-        <div className="bg-card border border-border rounded-xl p-6">
-          <h3 className="text-sm font-semibold mb-4">Task Burndown (14 days)</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={burndown}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="created" name="Created" stroke="#3b82f6" strokeWidth={2} dot />
-              <Line type="monotone" dataKey="completed" name="Completed" stroke="#22c55e" strokeWidth={2} dot />
-            </LineChart>
-          </ResponsiveContainer>
+        <div className="space-y-4">
+          {/* Metric cards */}
+          <div className="grid grid-cols-3 gap-4">
+            <MetricCard label={`Created (${burndownDays}d)`} value={burndownTotals.created} color="text-blue-600" />
+            <MetricCard label={`Completed (${burndownDays}d)`} value={burndownTotals.completed} color="text-green-600" />
+            <MetricCard
+              label="Net (created − done)"
+              value={burndownTotals.created - burndownTotals.completed}
+              color={burndownTotals.created - burndownTotals.completed > 0 ? "text-red-600" : "text-green-600"}
+            />
+          </div>
+
+          {/* Day presets */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Show:</span>
+            {DAY_PRESETS.map((d) => (
+              <button
+                key={d}
+                onClick={() => setBurndownDays(d)}
+                className={`px-3 py-1 text-xs rounded-md border transition-colors ${
+                  burndownDays === d
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border text-muted-foreground hover:border-foreground"
+                }`}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-6">
+            <h3 className="text-sm font-semibold mb-4">Task Burndown ({burndownDays} days)</h3>
+            {loading.burndown ? <ChartSkeleton /> : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={burndown}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="created" name="Created" stroke="#3b82f6" strokeWidth={2} dot />
+                  <Line type="monotone" dataKey="completed" name="Completed" stroke="#22c55e" strokeWidth={2} dot />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
       )}
     </div>

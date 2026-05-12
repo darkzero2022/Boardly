@@ -12,6 +12,7 @@ import {
   Tag,
   Bell,
   Building2,
+  ShieldCheck,
 } from "lucide-react";
 
 const navItems = [
@@ -26,6 +27,7 @@ const settingsItems = [
   { href: "/settings/labels", label: "Labels", icon: Tag },
   { href: "/settings/sla", label: "SLA Policies", icon: Bell },
   { href: "/settings/notifications", label: "Notifications", icon: Bell },
+  { href: "/settings/security", label: "Security", icon: ShieldCheck },
   { href: "/settings/integrations", label: "Integrations", icon: Settings },
 ];
 

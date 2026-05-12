@@ -20,8 +20,10 @@ import { NewColumnButton } from "./new-column-button";
 import { BoardHeader } from "./board-header";
 import { BulkActionBar } from "./bulk-action-bar";
 import { CalendarView } from "./calendar-view";
+import { TimelineView } from "./timeline-view";
 import { SwimlaneView } from "./swimlane-view";
 import { KeyboardShortcutsOverlay } from "./keyboard-shortcuts-overlay";
+import { ImportDialog } from "./import-dialog";
 import { useSocketContext } from "@/components/socket-provider";
 import { SOCKET_EVENTS } from "@/lib/socket";
 import { Plus } from "lucide-react";
@@ -90,16 +92,18 @@ export function KanbanBoard({
   currentUserId,
   session,
 }: KanbanBoardProps) {
+  const isViewer = session.user.role === "VIEWER";
   const [columns, setColumns] = useState<Column[]>(board.columns);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(
     openTaskId ?? null
   );
-  const [view, setView] = useState<"kanban" | "calendar">("kanban");
+  const [view, setView] = useState<"kanban" | "calendar" | "timeline">("kanban");
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [swimlaneMode, setSwimlaneMode] = useState<"off" | "assignee" | "priority" | "label">("off");
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const { socket, joinBoard, leaveBoard } = useSocketContext();
 
@@ -291,6 +295,8 @@ export function KanbanBoard({
         swimlaneMode={swimlaneMode}
         onSwimlaneModeChange={setSwimlaneMode}
         onShowShortcuts={() => setShowShortcuts(true)}
+        onImport={() => setShowImport(true)}
+        isViewer={isViewer}
       />
 
       <div className="flex-1 flex overflow-hidden">
@@ -359,6 +365,16 @@ export function KanbanBoard({
           </div>
         )}
 
+        {view === "timeline" && (
+          <div className="flex-1 overflow-hidden">
+            <TimelineView
+              tasks={allTasks as any}
+              columns={columns.map(c => ({ id: c.id, name: c.name }))}
+              onTaskClick={(id) => setSelectedTaskId(id)}
+            />
+          </div>
+        )}
+
         {selectedTask && (
           <TaskDetailDrawer
             taskId={selectedTaskId!}
@@ -396,11 +412,13 @@ export function KanbanBoard({
         onMove={(columnId) => handleBulkAction("move", { columnId })}
         onAssign={() => handleBulkAction("assign", {})}
         onLabelAdd={() => handleBulkAction("label", {})}
+        onPriority={(priority) => handleBulkAction("priority", { priority })}
         onDelete={() => handleBulkAction("delete", {})}
         onClear={() => { setSelectedTasks(new Set()); }}
       />
 
       <KeyboardShortcutsOverlay open={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      <ImportDialog open={showImport} onClose={() => { setShowImport(false); window.location.reload(); }} boardId={board.id} />
     </div>
   );
 }

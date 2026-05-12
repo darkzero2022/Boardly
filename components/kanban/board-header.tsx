@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Settings, LayoutGrid, Calendar, CheckSquare, Rows3, HelpCircle } from "lucide-react";
+import { ArrowLeft, Settings, LayoutGrid, Calendar, CheckSquare, Rows3, HelpCircle, GanttChart, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BoardFilters } from "./board-filters";
 import {
@@ -20,13 +20,15 @@ interface BoardHeaderProps {
     workspace: { id: string; name: string };
   };
   session: { user: { role?: string } };
-  view: "kanban" | "calendar";
-  onViewChange: (v: "kanban" | "calendar") => void;
+  view: "kanban" | "calendar" | "timeline";
+  onViewChange: (v: "kanban" | "calendar" | "timeline") => void;
   bulkMode: boolean;
   onBulkToggle: () => void;
   swimlaneMode: SwimlaneMode;
   onSwimlaneModeChange: (mode: SwimlaneMode) => void;
   onShowShortcuts: () => void;
+  onImport?: () => void;
+  isViewer?: boolean;
 }
 
 const swimlaneLabels: Record<SwimlaneMode, string> = {
@@ -46,6 +48,8 @@ export function BoardHeader({
   swimlaneMode,
   onSwimlaneModeChange,
   onShowShortcuts,
+  onImport,
+  isViewer = false,
 }: BoardHeaderProps) {
   return (
     <div className="flex items-center gap-3 px-6 py-3 border-b border-border bg-background">
@@ -79,6 +83,12 @@ export function BoardHeader({
         >
           <Calendar className="w-3.5 h-3.5" /> Calendar
         </button>
+        <button
+          onClick={() => onViewChange("timeline")}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${view === "timeline" ? "bg-background shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          <GanttChart className="w-3.5 h-3.5" /> Timeline
+        </button>
       </div>
 
       {/* Swimlane dropdown */}
@@ -99,17 +109,26 @@ export function BoardHeader({
         </DropdownMenu>
       )}
 
-      <Button
-        variant={bulkMode ? "default" : "outline"}
-        size="sm"
-        onClick={onBulkToggle}
-        className="gap-1.5"
-      >
-        <CheckSquare className="w-3.5 h-3.5" />
-        {bulkMode ? "Exit Select" : "Select"}
-      </Button>
+      {!isViewer && (
+        <Button
+          variant={bulkMode ? "default" : "outline"}
+          size="sm"
+          onClick={onBulkToggle}
+          className="gap-1.5"
+        >
+          <CheckSquare className="w-3.5 h-3.5" />
+          {bulkMode ? "Exit Select" : "Select"}
+        </Button>
+      )}
 
       <BoardFilters boardId={board.id} />
+
+      {(session.user.role === "ADMIN" || session.user.role === "MANAGER") && onImport && (
+        <Button variant="outline" size="sm" onClick={onImport}>
+          <Upload className="w-3.5 h-3.5 mr-1.5" />
+          Import
+        </Button>
+      )}
 
       {(session.user.role === "ADMIN" || session.user.role === "MANAGER") && (
         <Link href={`/settings/boards/${board.id}`}>

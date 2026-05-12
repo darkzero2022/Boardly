@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { X, Trash2, Clock, AlertTriangle, Paperclip, MessageSquare, GitBranch, History, Eye, EyeOff, Link2, UploadCloud, Download, Lock } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { X, Trash2, Clock, AlertTriangle, Paperclip, MessageSquare, GitBranch, History, Eye, EyeOff, Link2, UploadCloud, Download, Lock, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,7 +49,7 @@ interface TaskDetailDrawerProps {
   onDeleted: (taskId: string) => void;
 }
 
-type ActiveTab = "details" | "comments" | "history" | "subtasks" | "attachments" | "time";
+type ActiveTab = "details" | "comments" | "history" | "subtasks" | "attachments" | "time" | "dependencies" | "fields";
 
 export function TaskDetailDrawer({
   taskId,
@@ -82,6 +82,7 @@ export function TaskDetailDrawer({
   const [logMinutes, setLogMinutes] = useState("");
   const [logNote, setLogNote] = useState("");
   const [loggingTime, setLoggingTime] = useState(false);
+  const [customFieldValues, setCustomFieldValues] = useState<{ id: string; fieldId: string; value: string | null; field: { id: string; name: string; type: string; options: string | null } }[]>([]);
 
   useEffect(() => {
     fetch(`/api/tasks/${taskId}`)
@@ -111,6 +112,10 @@ export function TaskDetailDrawer({
     fetch(`/api/tasks/${taskId}/timelogs`)
       .then((r) => r.json())
       .then((d) => Array.isArray(d) && setTimeLogs(d))
+      .catch(() => {});
+    fetch(`/api/tasks/${taskId}/custom-fields`)
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setCustomFieldValues(d))
       .catch(() => {});
   }, [taskId]);
 
@@ -222,13 +227,16 @@ export function TaskDetailDrawer({
     ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
     : `${totalMinutes}m`;
 
+  const depCount = dependencies.blocks.length + dependencies.blockedBy.length;
   const tabs: { key: ActiveTab; label: string }[] = [
     { key: "details", label: "Details" },
     { key: "comments", label: "Comments" },
     { key: "subtasks", label: "Subtasks" },
+    { key: "dependencies", label: `Dependencies${depCount > 0 ? ` (${depCount})` : ""}` },
     { key: "attachments", label: `Attachments${attachments.length > 0 ? ` (${attachments.length})` : ""}` },
     { key: "time", label: `Time${timeLogs.length > 0 ? ` (${totalTime})` : ""}` },
     { key: "history", label: "History" },
+    { key: "fields", label: `Fields${customFieldValues.length > 0 ? ` (${customFieldValues.length})` : ""}` },
   ];
 
   return (
@@ -664,6 +672,28 @@ export function TaskDetailDrawer({
                 </div>
               )}
 
+              {activeTab === "dependencies" && (
+                <div className="p-6">
+                  <DependenciesPanel
+                    taskId={taskId}
+                    boardId={boardId}
+                    dependencies={dependencies}
+                    onChanged={setDependencies}
+                  />
+                </div>
+              )}
+
+              {activeTab === "fields" && (
+                <div className="p-6">
+                  <CustomFieldsPanel
+                    taskId={taskId}
+                    boardId={boardId}
+                    values={customFieldValues}
+                    onChanged={setCustomFieldValues}
+                  />
+                </div>
+              )}
+
               {activeTab === "history" && (
                 <div className="p-6">
                   <AuditTimeline taskId={taskId} />
@@ -674,6 +704,143 @@ export function TaskDetailDrawer({
         )}
       </div>
     </>
+  );
+}
+
+// Dependencies panel with add/remove
+function DependenciesPanel({
+  taskId,
+  boardId,
+  dependencies,
+  onChanged,
+}: {
+  taskId: string;
+  boardId: string;
+  dependencies: { blocks: DepTask[]; blockedBy: DepTask[] };
+  onChanged: (d: { blocks: DepTask[]; blockedBy: DepTask[] }) => void;
+}) {
+  const [searchQ, setSearchQ] = useState("");
+  const [searchResults, setSearchResults] = useState<{ id: string; title: string }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [adding, setAdding] = useState(false);
+
+  const doSearch = useCallback(async (q: string) => {
+    if (q.length < 2) { setSearchResults([]); return; }
+    setSearching(true);
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    setSearchResults((data.tasks ?? []).filter((t: { id: string }) => t.id !== taskId));
+    setSearching(false);
+  }, [taskId]);
+
+  useEffect(() => {
+    const t = setTimeout(() => doSearch(searchQ), 280);
+    return () => clearTimeout(t);
+  }, [searchQ, doSearch]);
+
+  async function addBlock(dependsOnId: string) {
+    const res = await fetch(`/api/tasks/${taskId}/dependencies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dependsOnId }),
+    });
+    if (res.ok) {
+      const dep = await res.json();
+      onChanged({ ...dependencies, blocks: [...dependencies.blocks, dep] });
+      setSearchQ("");
+      setSearchResults([]);
+      setAdding(false);
+    }
+  }
+
+  async function removeBlock(dependsOnId: string) {
+    await fetch(`/api/tasks/${taskId}/dependencies`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dependsOnId }),
+    });
+    onChanged({ ...dependencies, blocks: dependencies.blocks.filter(d => d.dependsOnId !== dependsOnId && d.dependsOn?.title !== undefined ? d.dependsOnId !== dependsOnId : true) });
+    // Refetch to be safe
+    const fresh = await fetch(`/api/tasks/${taskId}/dependencies`).then(r => r.json());
+    onChanged(fresh);
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Blocked By */}
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Blocked By</p>
+        {dependencies.blockedBy.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No blockers.</p>
+        ) : (
+          <div className="space-y-1">
+            {dependencies.blockedBy.map(dep => (
+              <div key={dep.id} className="flex items-center gap-2 p-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 text-sm">
+                <Lock className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                <span className="flex-1 truncate">{dep.dependsOn?.title ?? dep.task?.title}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Blocks */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Blocks</p>
+          <Button size="sm" variant="outline" onClick={() => setAdding(v => !v)}>
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Add
+          </Button>
+        </div>
+        {dependencies.blocks.length === 0 && !adding && (
+          <p className="text-sm text-muted-foreground">This task blocks nothing.</p>
+        )}
+        <div className="space-y-1 mb-2">
+          {dependencies.blocks.map(dep => (
+            <div key={dep.id} className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/50 text-sm">
+              <Link2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              <span className="flex-1 truncate">{dep.dependsOn?.title ?? dep.task?.title}</span>
+              <button
+                onClick={() => removeBlock(dep.dependsOnId ?? dep.id)}
+                className="p-1 hover:bg-destructive/10 rounded text-destructive"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {adding && (
+          <div className="relative">
+            <div className="flex items-center gap-2 p-2 border border-border rounded-lg bg-background">
+              <Search className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              <input
+                autoFocus
+                value={searchQ}
+                onChange={e => setSearchQ(e.target.value)}
+                placeholder="Search tasks to block…"
+                className="flex-1 text-sm bg-transparent outline-none"
+              />
+              {searching && <span className="text-xs text-muted-foreground">…</span>}
+            </div>
+            {searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+                {searchResults.slice(0, 6).map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => addBlock(t.id)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors truncate"
+                  >
+                    {t.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -737,6 +904,94 @@ function SubtaskList({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+type CFValue = { id: string; fieldId: string; value: string | null; field: { id: string; name: string; type: string; options: string | null } };
+
+function CustomFieldsPanel({
+  taskId,
+  boardId,
+  values,
+  onChanged,
+}: {
+  taskId: string;
+  boardId: string;
+  values: CFValue[];
+  onChanged: (v: CFValue[]) => void;
+}) {
+  const [fieldDefs, setFieldDefs] = useState<{ id: string; name: string; type: string; options: string | null }[]>([]);
+  const [localValues, setLocalValues] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/boards/${boardId}/custom-fields`)
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setFieldDefs(d))
+      .catch(() => {});
+    const map: Record<string, string> = {};
+    for (const v of values) map[v.fieldId] = v.value ?? "";
+    setLocalValues(map);
+  }, [boardId, values]);
+
+  async function saveField(fieldId: string, value: string) {
+    setLocalValues((prev) => ({ ...prev, [fieldId]: value }));
+    setSaving(true);
+    const res = await fetch(`/api/tasks/${taskId}/custom-fields`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ values: [{ fieldId, value }] }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      onChanged(updated);
+    }
+    setSaving(false);
+  }
+
+  if (fieldDefs.length === 0) {
+    return (
+      <div className="text-center text-sm text-muted-foreground py-8">
+        <p>No custom fields defined for this board.</p>
+        <p className="mt-1 text-xs">Admins can add fields in board settings.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Custom Fields</h3>
+        {saving && <span className="text-xs text-muted-foreground">Saving...</span>}
+      </div>
+      {fieldDefs.map((field) => {
+        const val = localValues[field.id] ?? "";
+        const options = field.options ? (JSON.parse(field.options) as string[]) : [];
+        return (
+          <div key={field.id}>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">{field.name}</label>
+            {field.type === "TEXT" && (
+              <Input value={val} onChange={(e) => setLocalValues((p) => ({ ...p, [field.id]: e.target.value }))} onBlur={(e) => saveField(field.id, e.target.value)} placeholder="Enter text..." />
+            )}
+            {field.type === "NUMBER" && (
+              <Input type="number" value={val} onChange={(e) => setLocalValues((p) => ({ ...p, [field.id]: e.target.value }))} onBlur={(e) => saveField(field.id, e.target.value)} placeholder="0" />
+            )}
+            {field.type === "DATE" && (
+              <Input type="date" value={val} onChange={(e) => saveField(field.id, e.target.value)} />
+            )}
+            {field.type === "CHECKBOX" && (
+              <input type="checkbox" checked={val === "true"} onChange={(e) => saveField(field.id, e.target.checked ? "true" : "false")} className="w-4 h-4" />
+            )}
+            {field.type === "SELECT" && (
+              <select className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" value={val} onChange={(e) => saveField(field.id, e.target.value)}>
+                <option value="">Select...</option>
+                {options.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

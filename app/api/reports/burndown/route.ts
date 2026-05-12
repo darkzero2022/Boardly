@@ -52,5 +52,7 @@ export async function GET(req: NextRequest) {
 
   const chart = Object.entries(byDay).map(([date, counts]) => ({ date, ...counts }));
 
-  return NextResponse.json(chart);
+  return NextResponse.json(chart, {
+    headers: { "Cache-Control": "private, max-age=60" },
+  });
 }
