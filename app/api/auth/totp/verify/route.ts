@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { authenticator } from "otplib";
+import { verify } from "otplib";
 
 // Called during login when 2FA is required
 // The pending user email is passed in body; no session yet
@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "2FA not enabled for this user" }, { status: 400 });
   }
 
-  const valid = authenticator.verify({ token, secret: user.totpSecret });
+  const result = await verify({ token, secret: user.totpSecret });
+  const valid = typeof result === "object" ? result.valid : result;
   if (!valid) return NextResponse.json({ error: "Invalid code" }, { status: 400 });
 
   return NextResponse.json({ ok: true, userId: user.id });
