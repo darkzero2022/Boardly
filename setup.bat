@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 
 echo.
 echo  +==================================================+
-echo  ^|           Boardly Setup ^— v3.0                  ^|
+echo  ^|           Boardly Setup ^— v5.0                  ^|
 echo  ^|   Self-hosted Team Task Management               ^|
 echo  +==================================================+
 echo.
@@ -286,6 +286,10 @@ echo  ^|                                                  ^|
 echo  ^|  Start the server:                               ^|
 echo  ^|    start.bat            ^(development^)            ^|
 echo  ^|    start.bat prod       ^(production build^)       ^|
+echo  ^|                                                  ^|
+echo  ^|  Security ^(per user after login^):                ^|
+echo  ^|    Settings ^-^> Security ^-^> Enable 2FA            ^|
+echo  ^|    ^(Google Authenticator / Authy^)                 ^|
 echo  ^|                                                  ^|
 if not "!DB_PROVIDER!"=="sqlite" (
 echo  ^|  Database: !DB_PROVIDER!                         ^|
