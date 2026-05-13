@@ -38,7 +38,9 @@ export default function LoginPage() {
       if (requires2FA) {
         setLoading(false);
         const cb = params.get("callbackUrl") ?? "/";
-        router.push(`/login/totp?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&callbackUrl=${encodeURIComponent(cb)}`);
+        // Store password in sessionStorage (tab-scoped, never appears in URL/logs)
+        sessionStorage.setItem("_2fa_pending_pass", password);
+        router.push(`/login/totp?email=${encodeURIComponent(email)}&callbackUrl=${encodeURIComponent(cb)}`);
         return;
       }
     }

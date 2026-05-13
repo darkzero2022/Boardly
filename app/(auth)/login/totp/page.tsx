@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
@@ -9,14 +9,24 @@ function TotpForm() {
   const params = useSearchParams();
   const email = params.get("email") ?? "";
   const callbackUrl = params.get("callbackUrl") ?? "/";
-  const password = params.get("password") ?? "";
 
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Password is retrieved from sessionStorage (never in URL)
+  // and cleared immediately after reading so it's not kept in memory longer than needed
+  const [password, setPassword] = useState("");
+  useEffect(() => {
+    const p = sessionStorage.getItem("_2fa_pending_pass") ?? "";
+    sessionStorage.removeItem("_2fa_pending_pass");
+    setPassword(p);
+    if (!p) setError("Session expired — please sign in again.");
+  }, []);
+
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
+    if (!password) { setError("Session expired — please sign in again."); return; }
     setLoading(true);
     setError(null);
 

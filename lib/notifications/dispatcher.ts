@@ -117,17 +117,36 @@ export async function dispatch(payload: DispatchPayload) {
   await Promise.allSettled(promises);
 }
 
+/** Block private / loopback / link-local IPs to prevent SSRF from stored webhook URLs. */
+function isSafeWebhookUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    if (!["http:", "https:"].includes(url.protocol)) return false;
+    const host = url.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1") return false;
+    if (/^169\.254\./.test(host)) return false;
+    if (/^10\./.test(host)) return false;
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;
+    if (/^192\.168\./.test(host)) return false;
+    return true;
+  } catch { return false; }
+}
+
 /** Fire outbound webhooks for a given event. Fire-and-forget — never throws. */
 export async function dispatchWebhooks(event: string, payload: object, boardId?: string) {
   try {
     const webhooks = await prisma.webhook.findMany({
       where: {
         active: true,
-        OR: [{ boardId: null }, { boardId: boardId ?? null }],
+        // boardId undefined → only global (boardId: null) webhooks fire
+        OR: boardId
+          ? [{ boardId: null }, { boardId }]
+          : [{ boardId: null }],
       },
     });
     for (const wh of webhooks) {
       try {
+        if (!isSafeWebhookUrl(wh.url)) continue; // SSRF guard
         const events: string[] = JSON.parse(wh.events);
         if (!events.includes(event)) continue;
         const body = JSON.stringify({ event, payload, timestamp: new Date().toISOString() });
@@ -135,7 +154,14 @@ export async function dispatchWebhooks(event: string, payload: object, boardId?:
         if (wh.secret) {
           headers["X-Boardly-Signature"] = createHmac("sha256", wh.secret).update(body).digest("hex");
         }
-        fetch(wh.url, { method: "POST", headers, body }).catch(() => {});
+        // Fire-and-forget with a 10-second timeout so hanging endpoints
+        // don't keep the Node.js event loop alive indefinitely
+        fetch(wh.url, {
+          method: "POST",
+          headers,
+          body,
+          signal: AbortSignal.timeout(10_000),
+        }).catch(() => {});
       } catch {
         // skip individual failures
       }

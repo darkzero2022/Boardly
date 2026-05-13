@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+// NextAuth v5 uses "authjs.session-token" in dev and "__Secure-authjs.session-token" in prod
+const SESSION_COOKIE =
+  process.env.NODE_ENV === "production"
+    ? "__Secure-authjs.session-token"
+    : "authjs.session-token";
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -32,9 +38,11 @@ export async function middleware(req: NextRequest) {
   }
 
   // Check JWT token (works in Edge runtime — no Prisma needed)
+  // NextAuth v5 changed cookie name from "next-auth.session-token" → "authjs.session-token"
   const token = await getToken({
     req,
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+    cookieName: SESSION_COOKIE,
   });
 
   if (!token) {

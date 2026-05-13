@@ -14,7 +14,39 @@
 
 A full-featured Kanban application for teams of any size. Drag-and-drop boards, SLA tracking, swimlanes, time tracking, real-time collaboration, two-factor authentication, custom fields, and Microsoft 365 integration — all running on your own server with zero cloud dependency.
 
-[Quick Start](#quick-start) · [Features](#features) · [Configuration](#environment-variables) · [Deployment](#production-deployment) · [Changelog](#changelog)
+[Quick Start](#quick-start) · [Features](#features) · [Screenshots](#screenshots) · [Configuration](#environment-variables) · [Deployment](#production-deployment) · [Changelog](#changelog)
+
+</div>
+
+---
+
+## Screenshots
+
+<div align="center">
+
+**Sign in**
+
+<img src="public/screenshots/05-login.png" alt="Boardly login page" width="480" />
+
+**Workspaces dashboard**
+
+<img src="public/screenshots/01-workspaces.png" alt="Workspaces dashboard" width="720" />
+
+**Kanban board** — drag-and-drop columns, priority badges, WIP limits, real-time updates
+
+<img src="public/screenshots/02-kanban-board.png" alt="Kanban board view" width="720" />
+
+**⌘K Command palette** — search tasks, boards, and comments instantly
+
+<img src="public/screenshots/04-search-palette.png" alt="Command palette" width="720" />
+
+**Two-Factor Authentication setup** — scan QR code with any authenticator app
+
+<img src="public/screenshots/03-2fa-setup.png" alt="2FA QR code setup" width="720" />
+
+**Integrations** — outbound webhooks with HMAC signing, Teams, and Planner sync
+
+<img src="public/screenshots/06-integrations.png" alt="Integrations settings" width="720" />
 
 </div>
 
