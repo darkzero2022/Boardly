@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/version-4.0-6366f1?style=for-the-badge" alt="Version 4.0" />
+<img src="https://img.shields.io/badge/version-5.0-6366f1?style=for-the-badge" alt="Version 5.0" />
 
 # Boardly
 
@@ -12,7 +12,7 @@
 [![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma)](https://prisma.io)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A full-featured Kanban application for teams of any size. Drag-and-drop boards, SLA tracking, swimlanes, time tracking, real-time collaboration, and Microsoft 365 integration — all running on your own server with zero cloud dependency.
+A full-featured Kanban application for teams of any size. Drag-and-drop boards, SLA tracking, swimlanes, time tracking, real-time collaboration, two-factor authentication, custom fields, and Microsoft 365 integration — all running on your own server with zero cloud dependency.
 
 [Quick Start](#quick-start) · [Features](#features) · [Configuration](#environment-variables) · [Deployment](#production-deployment) · [Changelog](#changelog)
 
@@ -20,16 +20,20 @@ A full-featured Kanban application for teams of any size. Drag-and-drop boards, 
 
 ---
 
-## What's New in v4.0
+## What's New in v5.0
 
-> **The User Feedback Update** — guided onboarding, richer reports, full admin UI, and faster page loads.
+> **The Security & Power Update** — 2FA, Viewer role, Timeline view, outbound webhooks, CSV import, and custom fields.
 
 | | Feature | Description |
 |---|---|---|
-| 🧙 | **Setup Wizard** | New installs launch a 3-step wizard to name your workspace, choose Solo or Team mode, and create your admin account — no more editing config files or running seed scripts |
-| 📊 | **Report Options** | Day-range presets (7d / 14d / 30d / 90d), a "My Tasks Only" toggle, and metric summary cards on every report tab |
-| 👥 | **Admin User Management** | Change roles, reassign teams, reset passwords, and delete users directly from the Settings UI — no database access required |
-| ⚡ | **Performance** | Skeleton loading states, HTTP Cache-Control headers on read-heavy APIs, and streaming skeletons for settings pages |
+| 🔒 | **Two-Factor Authentication** | TOTP-based 2FA (Google Authenticator, Authy). QR code setup, 6-digit login step, disable flow — per user in Security settings |
+| 👁 | **Viewer Role** | New read-only role. Viewers see boards and tasks but all write operations are blocked at the API level (403) and hidden in the UI |
+| 📅 | **Timeline / Gantt View** | Horizontal Gantt chart per board. Tasks rendered as priority-colored bars from creation date to due date, grouped by column, with a live today indicator |
+| 🔔 | **Outbound Webhooks** | Send HTTP POST events (`task.created`, `task.moved`, `task.updated`, `task.completed`, `comment.added`) to any URL. Optional HMAC-SHA256 signature, per-event filtering, test button |
+| 📥 | **CSV Import** | Import tasks from a spreadsheet. Column-mapping dialog, 5-row preview, bulk insert with result summary (imported / skipped / errors) |
+| 🗃 | **Custom Fields** | Per-board field definitions: Text, Number, Date, Dropdown, Checkbox. Values saved per task with auto-save on change. Manage fields in board settings |
+| ⌘K | **Command Palette** | Global search upgraded to a full modal command palette (⌘K / Ctrl+K). Results grouped by Tasks / Boards / Comments with arrow-key navigation |
+| 🎯 | **Bulk Set Priority** | New bulk action: select multiple tasks → set priority for all in one click |
 
 ---
 
@@ -43,7 +47,7 @@ A full-featured Kanban application for teams of any size. Drag-and-drop boards, 
 | Multiple workspaces | Organize boards by team, project, or department |
 | Column management | Create, rename (double-click), reorder, and color columns |
 | WIP limits | Max task count per column — orange warning at 80%, red at 100% |
-| Inline column rename | Double-click any column header (Admin / Manager only) |
+| Custom fields | Add Text / Number / Date / Dropdown / Checkbox fields to any board |
 
 ### 👁 Views
 
@@ -51,16 +55,18 @@ A full-featured Kanban application for teams of any size. Drag-and-drop boards, 
 |---|---|
 | **Kanban** | Classic column board with real-time drag-and-drop |
 | **Calendar** | Monthly calendar showing tasks by due date, color-coded by priority |
+| **Timeline** | Horizontal Gantt chart — tasks as bars from creation to due date, grouped by column |
 | **Swimlanes** | Group tasks within columns by Assignee, Priority, or Label |
 
 ### ✅ Task Management
 
 | Feature | Description |
 |---|---|
-| Rich task drawer | Description, assignee, labels, due date, priority, subtasks, comments, full history |
+| Rich task drawer | Description, assignee, labels, due date, priority, subtasks, comments, custom fields, full history |
 | Subtasks | Nested hierarchy with independent tracking |
 | Labels | Color-coded labels, multiple per task |
 | Task dependencies | Blocks / blocked-by relationships with circular dependency detection |
+| Custom fields | Per-board fields (Text, Number, Date, Dropdown, Checkbox) with auto-save |
 | Task cloning | Duplicate any task with one click |
 | File attachments | Upload files per task, stored on server disk |
 | Task watchers | Watch any task to receive all its notifications |
@@ -71,9 +77,10 @@ A full-featured Kanban application for teams of any size. Drag-and-drop boards, 
 
 | Feature | Description |
 |---|---|
-| Global search | Instant search across tasks, comments, and boards |
-| Bulk operations | Multi-select tasks → move column, reassign, add label, or delete |
-| Keyboard shortcuts | `?` overlay — `N` new task, `B` bulk, `1/2` switch views, `Esc` close |
+| Global search (⌘K) | Command palette — instant search across tasks, comments, boards with arrow-key navigation |
+| CSV import | Import tasks from a CSV file with column mapping and preview |
+| Bulk operations | Multi-select tasks → move, reassign, set priority, add label, or delete |
+| Keyboard shortcuts | `?` overlay — `N` new task, `B` bulk, `1/2/3` switch views, `Esc` close |
 | Board templates | Save any board as a template, create new boards from it |
 | Task templates | Reusable task starters insertable from the New Task dialog |
 | My Dashboard | Personal view — stats, my tasks by priority, @mentions, activity feed |
@@ -86,22 +93,26 @@ A full-featured Kanban application for teams of any size. Drag-and-drop boards, 
 | SLA escalation | Configurable escalation steps — assignee → manager → admin |
 | Audit trail | Full history of every field change on every task |
 | Recurring scheduler | Hourly cron clones recurring tasks on schedule |
+| Outbound webhooks | Fire HTTP POST events to external systems on task/comment activity |
 
 ### 🤝 Collaboration
 
 | Feature | Description |
 |---|---|
-| Real-time updates | Socket.io — moves, new tasks, and comments appear instantly |
+| Real-time updates | Socket.io — moves, new tasks, and comments appear instantly for all users |
 | Comments & @mentions | Threaded comments; @mention a user to notify them |
-| Notifications | In-app bell, email (SMTP), browser push (VAPID) |
+| Notifications | In-app bell, branded HTML email (SMTP), browser push (VAPID) |
+| Task watchers | Subscribe to any task for instant notifications on every change |
 
-### 🔐 Authentication
+### 🔐 Authentication & Security
 
-| Method | Description |
+| Feature | Description |
 |---|---|
 | Local accounts | Email + bcrypt password — admin controls who can sign up |
 | LDAP / Active Directory | Corporate directory login — AD, OpenLDAP, FreeIPA. Auto-provisions users on first login |
 | Microsoft SSO | Azure AD / Entra ID OAuth — admin can enable/disable per provider |
+| Two-factor authentication | TOTP 2FA (Google Authenticator, Authy). QR code setup in Security settings |
+| Viewer role | Read-only access — sees everything, can change nothing |
 
 ### 🏢 Microsoft 365 Integration
 
@@ -117,12 +128,14 @@ A full-featured Kanban application for teams of any size. Drag-and-drop boards, 
 | Feature | Description |
 |---|---|
 | Setup wizard | First-run guided setup — workspace name, mode, admin account |
-| Role-based access | ADMIN / MANAGER / MEMBER with per-board overrides |
+| Role-based access | ADMIN / MANAGER / MEMBER / VIEWER with per-board overrides |
 | User management UI | Change roles, reset passwords, delete users — no DB editing required |
 | Reports | Workload, SLA compliance, burndown — with date presets and solo/team toggle |
 | Excel export | Export any report to a formatted `.xlsx` |
 | Dark mode | Full dark theme, persisted per user |
 | Board embed | Embed any board as an iframe |
+| Outbound webhooks | CRUD webhook management with test endpoint in Settings → Integrations |
+| Custom field manager | Add / delete per-board custom fields in board settings |
 
 ---
 
@@ -136,9 +149,11 @@ A full-featured Kanban application for teams of any size. Drag-and-drop boards, 
 | Database | SQLite · PostgreSQL · MySQL (via Prisma) |
 | ORM | [Prisma 5](https://prisma.io) |
 | Auth | [NextAuth v5](https://authjs.dev) — credentials + LDAP + Azure AD |
+| 2FA | [otplib](https://github.com/yeojz/otplib) — TOTP (RFC 6238) |
 | Real-time | [Socket.io](https://socket.io) |
 | Drag & Drop | [@dnd-kit](https://dndkit.com) |
 | Charts | [Recharts](https://recharts.org) |
+| CSV parsing | [PapaParse](https://www.papaparse.com) |
 | Scheduling | [node-cron](https://github.com/node-cron/node-cron) |
 | Email | [Nodemailer](https://nodemailer.com) |
 
@@ -222,7 +237,7 @@ Copy `.env.local.example` to `.env.local`, or let the setup script generate it a
 | `AZURE_AD_CLIENT_SECRET` | Client secret |
 | `AZURE_AD_TENANT_ID` | Directory (tenant) ID |
 
-### Notifications
+### Notifications & Email
 
 | Variable | Description |
 |---|---|
@@ -241,6 +256,102 @@ Copy `.env.local.example` to `.env.local`, or let the setup script generate it a
 | `GRAPH_CLIENT_ID` | MS Graph app ID for Planner sync |
 | `GRAPH_CLIENT_SECRET` | MS Graph client secret |
 | `GRAPH_TENANT_ID` | MS Graph tenant ID |
+
+---
+
+## Two-Factor Authentication Setup
+
+2FA is configured per user in **Settings → Security**.
+
+1. Go to **Settings → Security** → click **Enable Two-Factor Authentication**
+2. Scan the QR code with Google Authenticator, Authy, or any TOTP app
+3. Enter the 6-digit code to confirm and activate
+4. On the next login, you will be prompted for your authenticator code after entering your password
+
+To disable 2FA, go back to **Settings → Security** and confirm with your current authenticator code.
+
+> **Note:** If a user loses access to their authenticator app, an admin can clear `totpEnabled` and `totpSecret` on their account via Prisma Studio.
+
+---
+
+## Outbound Webhooks
+
+Configure in **Settings → Integrations → Outbound Webhooks**.
+
+Each webhook fires an HTTP POST with a JSON body:
+
+```json
+{
+  "event": "task.created",
+  "payload": { "task": { "id": "...", "title": "...", "priority": "HIGH", "boardId": "..." } },
+  "timestamp": "2026-05-12T10:00:00.000Z"
+}
+```
+
+If a **secret** is set, every request includes an `X-Boardly-Signature` header — an HMAC-SHA256 hex digest of the body signed with your secret.
+
+**Available events:**
+
+| Event | Triggered when |
+|---|---|
+| `task.created` | A new task is created |
+| `task.moved` | A task is moved to a different column |
+| `task.updated` | A task's fields are edited |
+| `task.completed` | A task is moved to the last column |
+| `comment.added` | A comment is posted on a task |
+| `webhook.test` | The "Test" button is clicked in settings |
+
+---
+
+## CSV Import
+
+Click **Import** in the board header (Admin / Manager only) to open the import dialog.
+
+**Expected CSV columns** (header names are case-insensitive):
+
+| Column | Required | Notes |
+|---|---|---|
+| `title` | ✅ Yes | Task title |
+| `description` | No | Plain text description |
+| `priority` | No | `CRITICAL`, `HIGH`, `MEDIUM` (default), or `LOW` |
+| `dueDate` | No | Any format parseable by `new Date()` |
+| `columnName` | No | Must match an existing column name (case-insensitive). Falls back to the first column |
+| `assigneeEmail` | No | Must match a registered user's email address |
+
+The dialog shows a 5-row preview and lets you remap column headers before importing.
+
+---
+
+## Custom Fields
+
+Custom fields extend tasks with extra data specific to your team's workflow.
+
+**To add a field:** Board header → **Settings** → **Custom Fields** → **Add Field**
+
+**Field types:**
+
+| Type | Use case |
+|---|---|
+| Text | Notes, URLs, ticket IDs |
+| Number | Story points, estimates, weights |
+| Date | Target dates, review deadlines |
+| Dropdown | Status labels, categories, sprints |
+| Checkbox | Done flag, blocked flag |
+
+Fields appear in the task drawer under the **Fields** tab and auto-save on change.
+
+---
+
+## Roles
+
+| Role | Boards | Tasks | Settings | Write APIs |
+|---|---|---|---|---|
+| **ADMIN** | Full access | Full access | All settings | ✅ |
+| **MANAGER** | Create & manage | Full access | Board settings | ✅ |
+| **MEMBER** | View & contribute | Create / edit assigned | — | ✅ |
+| **VIEWER** | View only | View only | — | ❌ 403 |
+
+Viewers are blocked at the middleware level — all `POST`, `PUT`, `PATCH`, and `DELETE` API calls return `403 Read-only access`. No UI bypass is possible.
 
 ---
 
@@ -301,16 +412,6 @@ Users who log in via LDAP are auto-provisioned with the `MEMBER` role. Admins ca
    TEAMS_WEBHOOK_URL="https://xxx.webhook.office.com/webhookb2/..."
    ```
 4. Individual boards can override this URL in **Board Settings → Integrations**
-
----
-
-## Roles
-
-| Role | Boards | Tasks | Settings | Users |
-|---|---|---|---|---|
-| **ADMIN** | Full access | Full access | All settings | Create · Edit · Delete |
-| **MANAGER** | Create & manage | Full access | Board settings | View |
-| **MEMBER** | View & contribute | Create / edit assigned | — | View |
 
 ---
 
@@ -382,40 +483,57 @@ docker run -d \
 ```
 Boardly/
 ├── app/
-│   ├── (auth)/login/           # Login page (local, LDAP, Microsoft SSO)
+│   ├── (auth)/
+│   │   ├── login/              # Login page (local, LDAP, Microsoft SSO)
+│   │   └── login/totp/         # 2FA verification step
 │   ├── setup/                  # First-run setup wizard
-│   ├── (dashboard)/            # Authenticated pages
+│   ├── (dashboard)/
 │   │   ├── page.tsx            # My Dashboard
-│   │   ├── boards/[id]/        # Kanban board (kanban, calendar, swimlane views)
+│   │   ├── boards/[id]/        # Kanban board (kanban, calendar, timeline, swimlane)
 │   │   ├── workspaces/[id]/    # Workspace overview
 │   │   ├── reports/            # Analytics & reports
-│   │   └── settings/           # Users, teams, SLA, notifications, integrations
+│   │   └── settings/
+│   │       ├── users/          # User management
+│   │       ├── teams/          # Team management
+│   │       ├── labels/         # Label management
+│   │       ├── sla/            # SLA policies
+│   │       ├── notifications/  # Notification preferences
+│   │       ├── integrations/   # Teams, Planner, Outbound webhooks
+│   │       ├── security/       # 2FA setup/disable
+│   │       └── boards/[id]/    # Per-board custom fields
 │   └── api/                    # REST API routes
-│       ├── setup/              # First-run setup endpoint
-│       ├── users/[id]/         # User PATCH (role/team/password) + DELETE
+│       ├── tasks/              # CRUD + move + bulk + dependencies + custom fields
+│       ├── boards/[id]/        # Board integrations, SLA, custom field definitions
+│       ├── webhooks/           # Outbound webhook CRUD + test
+│       ├── import/csv/         # CSV task import
+│       ├── auth/totp/          # TOTP setup, verify, check, disable
 │       └── reports/            # Workload, SLA, burndown, export
 ├── components/
-│   ├── kanban/                 # Board, columns, cards, drawer, calendar, swimlanes
-│   ├── dashboard/              # Dashboard widgets
-│   ├── reports/                # Reports dashboard with charts
-│   ├── settings/               # User management, team management, SLA, labels
+│   ├── kanban/                 # Board, columns, cards, drawer, calendar, timeline, swimlanes
+│   │   ├── timeline-view.tsx   # Gantt chart view
+│   │   └── import-dialog.tsx   # CSV import dialog
+│   ├── settings/
+│   │   ├── webhook-settings.tsx      # Outbound webhook manager
+│   │   ├── custom-field-manager.tsx  # Board custom fields manager
+│   │   └── security-settings.tsx     # 2FA setup UI
 │   └── ui/                     # shadcn/ui base components
 ├── lib/
-│   ├── auth.ts                 # NextAuth configuration (credentials, LDAP, Azure AD)
-│   ├── auth/ldap.ts            # LDAP authentication module
+│   ├── auth.ts                 # NextAuth (credentials, LDAP, Azure AD, TOTP check)
 │   ├── db.ts                   # Prisma client singleton
 │   ├── sla/                    # SLA engine and escalation
-│   ├── notifications/          # Email, push, in-app dispatcher
+│   ├── notifications/
+│   │   ├── dispatcher.ts       # Multi-channel dispatcher + outbound webhooks
+│   │   └── email.ts            # Branded HTML email sender
 │   ├── recurring/              # Recurring task scheduler
 │   └── integrations/           # Teams, Planner, SMTP
 ├── prisma/
-│   ├── schema.prisma           # Database schema
+│   ├── schema.prisma           # Full schema (incl. Webhook, CustomFieldDef, TOTP)
 │   ├── migrations/             # Migration history
 │   └── seed.ts                 # Sample data for development
 ├── docs/
 │   └── database-setup.md       # Enterprise database guide
 ├── server.ts                   # Custom HTTP server (Next.js + Socket.io + cron)
-├── middleware.ts               # Auth guard + first-run redirect
+├── middleware.ts               # Auth guard + VIEWER role enforcement + first-run redirect
 ├── setup.sh / setup.bat        # Interactive setup scripts
 ├── start.sh / start.bat        # Dev and production start scripts
 └── .env.local.example          # Environment variable reference
@@ -458,9 +576,34 @@ npx prisma studio
 **Setup wizard shows on every load**
 The `setup_complete` cookie may have been cleared. Re-run setup or manually set `setupComplete = true` in `GlobalNotifConfig` via Prisma Studio.
 
+**Lost access to authenticator app (2FA locked out)**
+An admin can clear the user's 2FA via Prisma Studio:
+```bash
+npx prisma studio
+# Navigate to User → find the locked account → set totpEnabled = false, totpSecret = null
+```
+
+**Webhook deliveries failing**
+1. Verify the destination URL is reachable from the server
+2. Click the **Test** button in Settings → Integrations → Outbound Webhooks to get a direct response code
+3. Check that no firewall is blocking outbound HTTP from the server
+
 ---
 
 ## Changelog
+
+### v5.0 — Security & Power Update
+
+- **Two-Factor Authentication (TOTP)** — QR code setup, 6-digit login step, Security settings page, disable flow with confirmation
+- **VIEWER role** — fourth role with API-level read-only enforcement (middleware returns 403 on all mutating methods)
+- **Timeline / Gantt view** — third board view, pure-CSS horizontal bar chart grouped by column with today indicator
+- **Outbound webhooks** — CRUD with HMAC-SHA256 signatures, per-event filtering, test endpoint, settings UI in Integrations
+- **CSV import** — papaparse, column-mapping dialog, 5-row preview, bulk task insert with summary
+- **Custom fields** — per-board field definitions (Text / Number / Date / Dropdown / Checkbox), Fields tab in task drawer, auto-save
+- **Command palette (⌘K)** — global search upgraded to full modal palette with grouped results and arrow-key navigation
+- **Bulk Set Priority** — new bulk action alongside existing move / assign / label
+- **Branded email templates** — HTML emails with Boardly header, action button, footer; admin test-email button
+- **Task dependencies UI** — add / remove block links directly in the task drawer with search-as-you-type
 
 ### v4.0 — User Feedback Update
 > *Setup wizard · Report options · Admin user management · Performance*
@@ -478,7 +621,6 @@ The `setup_complete` cookie may have been cleared. Re-run setup or manually set 
 - **Toast notifications** — success and error feedback for all user management actions
 - **Skeleton loading states** — pulse skeletons on reports, settings, and dashboard pages
 - **HTTP caching** — Cache-Control headers on workload (30s), SLA/burndown (60s), labels (5min), teams (2min)
-- **appMode awareness** — solo installs auto-default reports to personal view
 
 ### v3.0 — Enterprise Auth & Productivity
 - LDAP / Active Directory authentication with auto-provisioning
