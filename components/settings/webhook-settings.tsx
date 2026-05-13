@@ -86,8 +86,10 @@ export function WebhookSettings({ initial }: WebhookSettingsProps) {
 
   async function handleDelete(id: string) {
     setDeleting(id);
-    await fetch(`/api/webhooks/${id}`, { method: "DELETE" });
-    setWebhooks((prev) => prev.filter((w) => w.id !== id));
+    const res = await fetch(`/api/webhooks/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setWebhooks((prev) => prev.filter((w) => w.id !== id));
+    }
     setDeleting(null);
   }
 

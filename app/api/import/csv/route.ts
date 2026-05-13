@@ -19,6 +19,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "file and boardId are required" }, { status: 400 });
   }
 
+  // Verify the caller has access to this board (must be a workspace member or ADMIN)
+  if (session.user.role !== "ADMIN") {
+    const membership = await prisma.workspaceMember.findFirst({
+      where: {
+        userId: session.user.id,
+        workspace: { boards: { some: { id: boardId } } },
+      },
+    });
+    if (!membership) return NextResponse.json({ error: "Board not found" }, { status: 404 });
+  }
+
+  // Enforce a file-size cap (5 MB) before reading
+  if (file.size > 5 * 1024 * 1024) {
+    return NextResponse.json({ error: "CSV file must be under 5 MB" }, { status: 400 });
+  }
+
   const csvText = await file.text();
   const { data, errors } = Papa.parse<Record<string, string>>(csvText, {
     header: true,
@@ -30,8 +46,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to parse CSV" }, { status: 400 });
   }
 
-  // Column map: csv header → task field
-  const colMap: Record<string, string> = mapping ? JSON.parse(mapping) : {};
+  // Row cap: prevent OOM on huge files
+  const MAX_ROWS = 5000;
+  if (data.length > MAX_ROWS) {
+    return NextResponse.json({ error: `CSV must not exceed ${MAX_ROWS} rows` }, { status: 400 });
+  }
+
+  // Safely parse the column mapping (bad JSON → fall back to auto-detect)
+  let colMap: Record<string, string> = {};
+  if (mapping) {
+    try { colMap = JSON.parse(mapping); } catch { /* use empty map */ }
+  }
 
   // Fetch board columns and users for matching
   const [columns, users] = await Promise.all([

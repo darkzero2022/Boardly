@@ -57,8 +57,10 @@ export function CustomFieldManager({ boardId, initial }: { boardId: string; init
 
   async function handleDelete(id: string) {
     setDeleting(id);
-    await fetch(`/api/boards/${boardId}/custom-fields/${id}`, { method: "DELETE" });
-    setFields((prev) => prev.filter((f) => f.id !== id));
+    const res = await fetch(`/api/boards/${boardId}/custom-fields/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setFields((prev) => prev.filter((f) => f.id !== id));
+    }
     setDeleting(null);
   }
 

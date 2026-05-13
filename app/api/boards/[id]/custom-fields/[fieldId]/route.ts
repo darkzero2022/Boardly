@@ -29,12 +29,16 @@ export async function PUT(
     data.options = parsed.data.options ? JSON.stringify(parsed.data.options) : null;
   }
 
-  const field = await prisma.customFieldDef.update({
-    where: { id: params.fieldId, boardId: params.id },
-    data,
-  });
-
-  return NextResponse.json(field);
+  try {
+    const field = await prisma.customFieldDef.update({
+      where: { id: params.fieldId, boardId: params.id },
+      data,
+    });
+    return NextResponse.json(field);
+  } catch (err: unknown) {
+    if ((err as { code?: string }).code === "P2025") return NextResponse.json({ error: "Not found" }, { status: 404 });
+    throw err;
+  }
 }
 
 export async function DELETE(
@@ -47,6 +51,11 @@ export async function DELETE(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await prisma.customFieldDef.delete({ where: { id: params.fieldId, boardId: params.id } });
-  return NextResponse.json({ ok: true });
+  try {
+    await prisma.customFieldDef.delete({ where: { id: params.fieldId, boardId: params.id } });
+    return NextResponse.json({ ok: true });
+  } catch (err: unknown) {
+    if ((err as { code?: string }).code === "P2025") return NextResponse.json({ error: "Not found" }, { status: 404 });
+    throw err;
+  }
 }

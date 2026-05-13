@@ -38,13 +38,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const data: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.events) data.events = JSON.stringify(parsed.data.events);
 
-  const webhook = await prisma.webhook.update({
-    where: { id: params.id },
-    data,
-    include: { board: { select: { id: true, name: true } } },
-  });
-
-  return NextResponse.json(webhook);
+  try {
+    const webhook = await prisma.webhook.update({
+      where: { id: params.id },
+      data,
+      include: { board: { select: { id: true, name: true } } },
+    });
+    return NextResponse.json(webhook);
+  } catch (err: unknown) {
+    if ((err as { code?: string }).code === "P2025") return NextResponse.json({ error: "Not found" }, { status: 404 });
+    throw err;
+  }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -52,6 +56,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  await prisma.webhook.delete({ where: { id: params.id } });
-  return NextResponse.json({ ok: true });
+  try {
+    await prisma.webhook.delete({ where: { id: params.id } });
+    return NextResponse.json({ ok: true });
+  } catch (err: unknown) {
+    if ((err as { code?: string }).code === "P2025") return NextResponse.json({ error: "Not found" }, { status: 404 });
+    throw err;
+  }
 }
