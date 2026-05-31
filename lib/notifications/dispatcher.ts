@@ -118,12 +118,12 @@ export async function dispatch(payload: DispatchPayload) {
 }
 
 /** Block private / loopback / link-local IPs to prevent SSRF from stored webhook URLs. */
-function isSafeWebhookUrl(rawUrl: string): boolean {
+export function isSafeWebhookUrl(rawUrl: string): boolean {
   try {
     const url = new URL(rawUrl);
     if (!["http:", "https:"].includes(url.protocol)) return false;
     const host = url.hostname.toLowerCase();
-    if (host === "localhost" || host === "127.0.0.1" || host === "::1") return false;
+    if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]") return false;
     if (/^169\.254\./.test(host)) return false;
     if (/^10\./.test(host)) return false;
     if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;

@@ -29,6 +29,11 @@ function getEnv(key: string): string {
   return process.env[key] ?? "";
 }
 
+/** Strip LDAP special characters to prevent filter injection. Exported for testing. */
+export function sanitizeLdapUsername(username: string): string {
+  return username.replace(/[\\*()\x00]/g, "");
+}
+
 /** Build the ldapjs client */
 function createClient(): ldap.Client {
   const uri = getEnv("LDAP_URI"); // e.g. ldap://dc.company.com:389 or ldaps://...
@@ -123,8 +128,7 @@ export async function authenticateLdap(
   if (!uri || !baseDn) return null; // LDAP not configured
 
   // Build the search filter — replace {{username}} placeholder
-  // Escape special LDAP characters in the username to prevent injection
-  const safeUsername = username.replace(/[\\*()\x00]/g, "");
+  const safeUsername = sanitizeLdapUsername(username);
   const filter = filterTemplate.replace(/\{\{username\}\}/g, safeUsername);
 
   const client = createClient();

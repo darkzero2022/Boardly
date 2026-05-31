@@ -12,8 +12,8 @@ interface Task {
   description: string | null;
   priority: string;
   slaStatus: string;
-  slaDeadline: Date | null;
-  dueDate: Date | null;
+  slaDeadline: Date | string | null;
+  dueDate: Date | string | null;
   order: number;
   columnId: string;
   assignee: { id: string; name: string | null; image: string | null } | null;

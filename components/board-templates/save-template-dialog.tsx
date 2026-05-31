@@ -42,7 +42,6 @@ export function SaveTemplateDialog({ boardId, boardName, trigger }: SaveTemplate
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? "Failed to save template");
       }
-      console.log("Board template saved:", name.trim());
       setSuccess(true);
       setTimeout(() => {
         setOpen(false);

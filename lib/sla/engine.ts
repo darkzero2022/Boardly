@@ -24,6 +24,23 @@ export async function assignSLADeadline(
 }
 
 /**
+ * Pure status calculation — exported for testing.
+ * Returns the SLA status a task should have given the current time.
+ */
+export function computeSLAStatus(
+  now: Date,
+  createdAt: Date,
+  deadline: Date
+): SLAStatus {
+  if (now >= deadline) return "BREACHED";
+  const totalMs = deadline.getTime() - createdAt.getTime();
+  const elapsedMs = now.getTime() - createdAt.getTime();
+  const pctElapsed = totalMs > 0 ? (elapsedMs / totalMs) * 100 : 100;
+  if (pctElapsed >= 75) return "AT_RISK";
+  return "OK";
+}
+
+/**
  * Core SLA evaluation loop — checks all open tasks and updates their status.
  */
 export async function runSLACheck() {
@@ -50,17 +67,12 @@ export async function runSLACheck() {
     if (!task.slaDeadline) continue;
 
     const deadline = new Date(task.slaDeadline);
-    const totalMs = deadline.getTime() - new Date(task.createdAt).getTime();
-    const elapsedMs = now.getTime() - new Date(task.createdAt).getTime();
-    const pctElapsed = (elapsedMs / totalMs) * 100;
-
-    let newStatus: SLAStatus = "OK";
-
-    if (now >= deadline) {
-      newStatus = "BREACHED";
-    } else if (pctElapsed >= 75) {
-      newStatus = "AT_RISK";
-    }
+    const newStatus = computeSLAStatus(now, new Date(task.createdAt), deadline);
+    const pctElapsed = (() => {
+      const totalMs = deadline.getTime() - new Date(task.createdAt).getTime();
+      const elapsedMs = now.getTime() - new Date(task.createdAt).getTime();
+      return totalMs > 0 ? (elapsedMs / totalMs) * 100 : 100;
+    })();
 
     if (newStatus !== task.slaStatus) {
       updates.push(

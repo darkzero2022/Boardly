@@ -21,13 +21,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+interface CreatedTask {
+  id: string;
+  title: string;
+  description: string | null;
+  priority: string;
+  slaStatus: string;
+  slaDeadline: string | null;
+  dueDate: string | null;
+  order: number;
+  columnId: string;
+  assignee: { id: string; name: string | null; image: string | null } | null;
+  labels: { labelId: string; label: { id: string; name: string; color: string } }[];
+  _count: { subtasks: number; comments: number; attachments: number };
+}
+
 interface NewTaskDialogProps {
   columnId: string;
   boardId: string;
   users: { id: string; name: string | null; image: string | null }[];
   labels: { id: string; name: string; color: string }[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onCreated: (task: any) => void;
+  onCreated: (task: CreatedTask) => void;
   trigger: React.ReactNode;
 }
 

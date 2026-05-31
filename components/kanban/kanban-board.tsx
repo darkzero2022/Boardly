@@ -325,8 +325,7 @@ export function KanbanBoard({
               {columns.map((column) => (
                 <KanbanColumn
                   key={column.id}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  column={column as any}
+                  column={column}
                   boardId={board.id}
                   users={users}
                   labels={labels}
@@ -345,8 +344,7 @@ export function KanbanBoard({
               {activeTask && (
                 <div className="rotate-2 scale-105 opacity-90">
                   <TaskCard
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    task={activeTask as any}
+                    task={activeTask}
                     onClick={() => {}}
                     isDragging
                   />
