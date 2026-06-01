@@ -14,7 +14,7 @@
 
 A full-featured Kanban application for teams of any size. Drag-and-drop boards, SLA tracking, swimlanes, time tracking, real-time collaboration, two-factor authentication, custom fields, and Microsoft 365 integration — all running on your own server with zero cloud dependency.
 
-[Quick Start](#quick-start) · [Features](#features) · [Screenshots](#screenshots) · [Configuration](#environment-variables) · [Deployment](#production-deployment) · [Testing](#testing) · [Contributing](#contributing) · [Changelog](#changelog)
+[Quick Start](#quick-start) · [Features](#features) · [Screenshots](#screenshots) · [Configuration](#environment-variables) · [Deployment](#production-deployment) · [Contributing](#contributing) · [Changelog](#changelog)
 
 </div>
 
@@ -622,25 +622,6 @@ npx prisma studio
 
 ---
 
-## Testing
-
-The test suite uses [Vitest](https://vitest.dev) and covers security-critical utilities and pure business logic.
-
-```bash
-npm test                  # run all tests once
-npm run test:watch        # watch mode
-npm run test:coverage     # coverage report
-```
-
-| File | What it covers |
-|---|---|
-| `lib/utils.test.ts` | `getSLADeadline`, `formatDate`, `timeAgo`, `parseMentions`, `priorityColor`, `slaStatusColor` |
-| `lib/notifications/dispatcher.test.ts` | `isSafeWebhookUrl` — 31 SSRF guard cases (loopback, RFC 1918, link-local, IPv6, NAT64, IPv4-mapped IPv6) |
-| `lib/sla/engine.test.ts` | `computeSLAStatus` — OK / AT_RISK / BREACHED transitions and edge cases |
-| `lib/auth/ldap.test.ts` | `sanitizeLdapUsername` — LDAP injection prevention; `isLdapEnabled` |
-
----
-
 ## Contributing
 
 Contributions are welcome! Here's how to get involved:
@@ -674,7 +655,15 @@ Please open an issue first for anything significant so we can discuss the approa
 
 ## Security
 
-If you discover a security vulnerability, please **do not** open a public GitHub issue. Instead, follow the responsible disclosure process described in [SECURITY.md](SECURITY.md).
+The codebase has undergone a manual security review covering SSRF, authentication bypass, injection, and authorization. Key hardening applied:
+
+- **SSRF protection** — outbound webhook and Teams notification URLs are validated against all RFC 1918 ranges, loopback (IPv4 + IPv6), IPv4-mapped IPv6, NAT64 (`64:ff9b::/96`), and link-local addresses before any request is made
+- **LDAP injection prevention** — usernames are sanitized (RFC 4515 special characters removed) before insertion into LDAP search filters
+- **Webhook HMAC signatures** — outbound payloads are optionally signed with HMAC-SHA256
+- **VIEWER role enforcement** — all mutating API calls return `403` for read-only users, enforced at the middleware layer
+- **2FA (TOTP)** — per-user second factor checked before session creation
+
+If you discover a security vulnerability, please **do not** open a public GitHub issue. Follow the responsible disclosure process in [SECURITY.md](SECURITY.md).
 
 ---
 
