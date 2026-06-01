@@ -2,31 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { createHmac } from "crypto";
-
-/** Block private / loopback / link-local IP ranges to prevent SSRF. */
-function isSafeWebhookUrl(rawUrl: string): boolean {
-  try {
-    const url = new URL(rawUrl);
-    // Only allow https in production; allow http in development
-    if (process.env.NODE_ENV === "production" && url.protocol !== "https:") return false;
-    if (!["http:", "https:"].includes(url.protocol)) return false;
-
-    const host = url.hostname.toLowerCase();
-    // Block localhost and loopback
-    if (host === "localhost" || host === "127.0.0.1" || host === "::1") return false;
-    // Block link-local (169.254.x.x)
-    if (/^169\.254\./.test(host)) return false;
-    // Block RFC-1918 private ranges
-    if (/^10\./.test(host)) return false;
-    if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;
-    if (/^192\.168\./.test(host)) return false;
-    // Block AWS metadata endpoint
-    if (host === "169.254.169.254") return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { isSafeWebhookUrl } from "@/lib/notifications/dispatcher";
 
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
@@ -38,6 +14,10 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
 
   if (!isSafeWebhookUrl(webhook.url)) {
     return NextResponse.json({ error: "Webhook URL is not allowed (private/internal addresses are blocked)" }, { status: 400 });
+  }
+  // Test button enforces HTTPS in production; saved webhooks allow HTTP for self-hosted setups
+  if (process.env.NODE_ENV === "production" && !/^https:\/\//i.test(webhook.url)) {
+    return NextResponse.json({ error: "Webhook URL must use HTTPS in production" }, { status: 400 });
   }
 
   const payload = {

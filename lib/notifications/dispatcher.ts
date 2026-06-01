@@ -123,11 +123,15 @@ export function isSafeWebhookUrl(rawUrl: string): boolean {
     const url = new URL(rawUrl);
     if (!["http:", "https:"].includes(url.protocol)) return false;
     const host = url.hostname.toLowerCase();
-    if (host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]") return false;
-    if (/^169\.254\./.test(host)) return false;
-    if (/^10\./.test(host)) return false;
-    if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;
-    if (/^192\.168\./.test(host)) return false;
+    if (host === "localhost" || host === "[::1]") return false;
+    if (/^127\./.test(host)) return false;                          // full 127.0.0.0/8 loopback
+    if (/^169\.254\./.test(host)) return false;                     // link-local / AWS metadata
+    if (/^10\./.test(host)) return false;                           // RFC 1918
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;     // RFC 1918
+    if (/^192\.168\./.test(host)) return false;                     // RFC 1918
+    if (/^\[::ffff:/i.test(host)) return false;                     // IPv4-mapped IPv6
+    if (/^\[f[cd][0-9a-f]{2}:/i.test(host)) return false;          // IPv6 unique-local fc00::/7
+    if (/^\[fe[89ab][0-9a-f]/i.test(host)) return false;           // IPv6 link-local fe80::/10
     return true;
   } catch { return false; }
 }
