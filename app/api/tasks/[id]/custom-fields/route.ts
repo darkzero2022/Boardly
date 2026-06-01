@@ -12,18 +12,16 @@ async function getTaskWithAccess(taskId: string, userId: string, role: string) {
       boardId: true,
       board: {
         select: {
-          workspace: {
-            select: { members: { select: { userId: true } } },
-          },
+          members: { select: { userId: true } },
         },
       },
     },
   });
   if (!task) return null;
 
-  // ADMIN can access any task; other roles must be workspace members
+  // ADMIN can access any task; other roles must be board members
   if (role === "ADMIN") return task;
-  const isMember = task.board.workspace.members.some((m) => m.userId === userId);
+  const isMember = task.board.members.some((m) => m.userId === userId);
   return isMember ? task : null;
 }
 

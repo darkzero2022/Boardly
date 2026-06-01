@@ -19,13 +19,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "file and boardId are required" }, { status: 400 });
   }
 
-  // Verify the caller has access to this board (must be a workspace member or ADMIN)
+  // Verify the caller has access to this board (must be a board member or ADMIN)
   if (session.user.role !== "ADMIN") {
-    const membership = await prisma.workspaceMember.findFirst({
-      where: {
-        userId: session.user.id,
-        workspace: { boards: { some: { id: boardId } } },
-      },
+    const membership = await prisma.boardMember.findFirst({
+      where: { boardId, userId: session.user.id },
     });
     if (!membership) return NextResponse.json({ error: "Board not found" }, { status: 404 });
   }

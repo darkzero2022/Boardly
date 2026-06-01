@@ -9,7 +9,7 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const secret = generateSecret();
-  const otpauth = generateURI({ type: "totp", label: session.user.email ?? session.user.name ?? "user", secret, issuer: "Boardly" });
+  const otpauth = generateURI({ label: session.user.email ?? session.user.name ?? "user", secret, issuer: "Boardly" });
   const qrDataUrl = await QRCode.toDataURL(otpauth);
 
   return NextResponse.json({ secret, qrDataUrl });

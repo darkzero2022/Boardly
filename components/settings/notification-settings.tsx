@@ -24,10 +24,10 @@ interface GlobalConfig {
   allowBrowser: boolean;
   allowMicrosoftSSO: boolean;
   allowCredentials: boolean;
-  smtpHost?: string;
-  smtpPort?: number;
-  smtpUser?: string;
-  smtpPass?: string;
+  smtpHost?: string | null;
+  smtpPort?: number | null;
+  smtpUser?: string | null;
+  smtpPass?: string | null;
 }
 
 function Toggle({

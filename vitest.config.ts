@@ -7,10 +7,6 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    environmentMatchGlobs: [
-      ["components/**", "jsdom"],
-      ["app/**", "jsdom"],
-    ],
   },
   resolve: {
     alias: {

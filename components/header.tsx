@@ -184,7 +184,7 @@ export function Header({ user }: HeaderProps) {
               )}
 
               {!searching && query.length >= 2 && !hasResults && (
-                <p className="px-4 py-3 text-sm text-muted-foreground">No results for "{query}"</p>
+                <p className="px-4 py-3 text-sm text-muted-foreground">No results for &quot;{query}&quot;</p>
               )}
 
               {!searching && query.length < 2 && (

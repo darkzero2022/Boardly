@@ -174,7 +174,6 @@ export async function dispatchWebhooks(event: string, payload: object, boardId?:
 // Lazy import to avoid circular dependency
 function getIO() {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     return ((globalThis as Record<string, unknown>).__socketio as import("socket.io").Server) ?? null;
   } catch {
     return null;
