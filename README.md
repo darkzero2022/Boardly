@@ -14,7 +14,7 @@
 
 A full-featured Kanban application for teams of any size. Drag-and-drop boards, SLA tracking, swimlanes, time tracking, real-time collaboration, two-factor authentication, custom fields, and Microsoft 365 integration — all running on your own server with zero cloud dependency.
 
-[Quick Start](#quick-start) · [Features](#features) · [Screenshots](#screenshots) · [Configuration](#environment-variables) · [Deployment](#production-deployment) · [Changelog](#changelog)
+[Quick Start](#quick-start) · [Features](#features) · [Screenshots](#screenshots) · [Configuration](#environment-variables) · [Deployment](#production-deployment) · [Testing](#testing) · [Contributing](#contributing) · [Changelog](#changelog)
 
 </div>
 
@@ -619,6 +619,68 @@ npx prisma studio
 1. Verify the destination URL is reachable from the server
 2. Click the **Test** button in Settings → Integrations → Outbound Webhooks to get a direct response code
 3. Check that no firewall is blocking outbound HTTP from the server
+
+---
+
+## Testing
+
+The test suite uses [Vitest](https://vitest.dev) and covers security-critical utilities and pure business logic.
+
+```bash
+npm test                  # run all tests once
+npm run test:watch        # watch mode
+npm run test:coverage     # coverage report
+```
+
+| File | What it covers |
+|---|---|
+| `lib/utils.test.ts` | `getSLADeadline`, `formatDate`, `timeAgo`, `parseMentions`, `priorityColor`, `slaStatusColor` |
+| `lib/notifications/dispatcher.test.ts` | `isSafeWebhookUrl` — 31 SSRF guard cases (loopback, RFC 1918, link-local, IPv6, NAT64, IPv4-mapped IPv6) |
+| `lib/sla/engine.test.ts` | `computeSLAStatus` — OK / AT_RISK / BREACHED transitions and edge cases |
+| `lib/auth/ldap.test.ts` | `sanitizeLdapUsername` — LDAP injection prevention; `isLdapEnabled` |
+
+---
+
+## Contributing
+
+Contributions are welcome! Here's how to get involved:
+
+1. **Fork** the repository and create a feature branch: `git checkout -b feat/my-feature`
+2. **Install** dependencies: `npm install --legacy-peer-deps`
+3. **Make your changes** — keep commits focused and descriptive
+4. **Run checks** before opening a PR:
+   ```bash
+   npm test          # all tests must pass
+   npm run lint      # no ESLint errors
+   npm run build     # TypeScript must compile cleanly
+   ```
+5. **Open a Pull Request** against `main` with a clear description of the change and why
+
+**What we welcome:**
+- Bug fixes with a failing test that demonstrates the fix
+- New integrations (Slack, Jira, etc.) that follow the existing patterns in `lib/integrations/`
+- Database provider fixes or improvements
+- Documentation improvements and typo fixes
+- Translated README files
+
+**What to avoid:**
+- Large refactors without prior discussion in an issue
+- Changes that add cloud dependencies or require external services
+- Breaking changes to the webhook payload shape or API contracts
+
+Please open an issue first for anything significant so we can discuss the approach before you invest time coding.
+
+---
+
+## Security
+
+If you discover a security vulnerability, please **do not** open a public GitHub issue. Instead, follow the responsible disclosure process described in [SECURITY.md](SECURITY.md).
+
+---
+
+## License
+
+Boardly is released under the [MIT License](LICENSE).
 
 ---
 
