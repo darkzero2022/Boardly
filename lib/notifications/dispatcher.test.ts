@@ -100,6 +100,16 @@ describe("isSafeWebhookUrl", () => {
     expect(isSafeWebhookUrl("http://192.169.0.1/hook")).toBe(true);
   });
 
+  // ---- blocked: NAT64 well-known prefix ----
+
+  it("blocks NAT64 prefix 64:ff9b:: loopback", () => {
+    expect(isSafeWebhookUrl("http://[64:ff9b::7f00:1]/hook")).toBe(false);
+  });
+
+  it("blocks NAT64 prefix 64:ff9b:: AWS metadata", () => {
+    expect(isSafeWebhookUrl("http://[64:ff9b::a9fe:a9fe]/hook")).toBe(false);
+  });
+
   // ---- blocked: IPv4-mapped IPv6 ----
 
   it("blocks IPv4-mapped IPv6 loopback ::ffff:127.0.0.1", () => {

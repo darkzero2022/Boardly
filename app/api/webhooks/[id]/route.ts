@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
+import { isSafeWebhookUrl } from "@/lib/notifications/dispatcher";
 
 const updateSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -34,6 +35,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const body = await req.json();
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+
+  if (parsed.data.url && !isSafeWebhookUrl(parsed.data.url)) {
+    return NextResponse.json({ error: "Webhook URL is not allowed (private/internal addresses are blocked)" }, { status: 400 });
+  }
 
   const data: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.events) data.events = JSON.stringify(parsed.data.events);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
+import { isSafeWebhookUrl } from "@/lib/notifications/dispatcher";
 
 const createSchema = z.object({
   name: z.string().min(1).max(100),
@@ -35,6 +36,10 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   const { name, url, secret, events, active, boardId } = parsed.data;
+
+  if (!isSafeWebhookUrl(url)) {
+    return NextResponse.json({ error: "Webhook URL is not allowed (private/internal addresses are blocked)" }, { status: 400 });
+  }
 
   const webhook = await prisma.webhook.create({
     data: {

@@ -130,6 +130,7 @@ export function isSafeWebhookUrl(rawUrl: string): boolean {
     if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;     // RFC 1918
     if (/^192\.168\./.test(host)) return false;                     // RFC 1918
     if (/^\[::ffff:/i.test(host)) return false;                     // IPv4-mapped IPv6
+    if (/^\[64:ff9b:/i.test(host)) return false;                   // NAT64 well-known prefix (RFC 6146)
     if (/^\[f[cd][0-9a-f]{2}:/i.test(host)) return false;          // IPv6 unique-local fc00::/7
     if (/^\[fe[89ab][0-9a-f]/i.test(host)) return false;           // IPv6 link-local fe80::/10
     return true;

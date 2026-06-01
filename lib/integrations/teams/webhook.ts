@@ -1,3 +1,5 @@
+import { isSafeWebhookUrl } from "@/lib/notifications/dispatcher";
+
 interface TeamsCard {
   title: string;
   text: string;
@@ -9,6 +11,7 @@ export async function sendTeamsNotification(
   webhookUrl: string,
   card: TeamsCard
 ) {
+  if (!isSafeWebhookUrl(webhookUrl)) return;
   const body = {
     "@type": "MessageCard",
     "@context": "http://schema.org/extensions",
@@ -40,6 +43,7 @@ export async function sendTeamsNotification(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!res.ok) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isSafeWebhookUrl } from "@/lib/notifications/dispatcher";
 
 export async function PUT(
   req: NextRequest,
@@ -12,6 +13,10 @@ export async function PUT(
   }
 
   const { teamsWebhook, teamsChannelId, plannerPlanId } = await req.json();
+
+  if (teamsWebhook && !isSafeWebhookUrl(teamsWebhook)) {
+    return NextResponse.json({ error: "Teams webhook URL is not allowed (private/internal addresses are blocked)" }, { status: 400 });
+  }
 
   const board = await prisma.board.update({
     where: { id: params.id },

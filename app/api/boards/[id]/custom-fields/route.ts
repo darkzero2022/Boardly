@@ -13,7 +13,14 @@ const createSchema = z.object({
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (session.user.role !== "ADMIN") {
+    const membership = await prisma.boardMember.findFirst({
+      where: { boardId: params.id, userId: session.user.id },
+    });
+    if (!membership) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   const fields = await prisma.customFieldDef.findMany({
     where: { boardId: params.id },
